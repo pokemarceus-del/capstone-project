@@ -1,0 +1,564 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AquaFlow Customer Service API",
+    "version": "1.0.0",
+    "description": "Customer, service account, and meter installation management."
+  },
+  "servers": [{ "url": "/" }],
+  "tags": [
+    { "name": "Customers" },
+    { "name": "Accounts" },
+    { "name": "Meters" },
+    { "name": "Operations" }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": ["Operations"],
+        "summary": "Liveness probe",
+        "responses": {
+          "200": {
+            "description": "The service process is alive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "const": "ok" },
+                    "service": { "const": "customer" },
+                    "timestamp": { "type": "string", "format": "date-time" }
+                  },
+                  "required": ["status", "service", "timestamp"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "tags": ["Operations"],
+        "summary": "Dependency-aware readiness probe",
+        "responses": {
+          "200": {
+            "description": "The service and its database are ready.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "const": "ok" },
+                    "service": { "const": "customer" },
+                    "dependencies": {
+                      "type": "object",
+                      "properties": { "database": { "const": "ok" } },
+                      "required": ["database"]
+                    }
+                  },
+                  "required": ["status", "service", "dependencies"]
+                }
+              }
+            }
+          },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/api/v1/info": {
+      "get": {
+        "tags": ["Operations"],
+        "summary": "Service information",
+        "responses": {
+          "200": {
+            "description": "Service name and description.",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/customers": {
+      "get": {
+        "tags": ["Customers"],
+        "summary": "Search and list customers",
+        "parameters": [
+          { "$ref": "#/components/parameters/Search" },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["active", "inactive", "archived"] }
+          },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/Limit" }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of matching customers.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CustomerPage" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      },
+      "post": {
+        "tags": ["Customers"],
+        "summary": "Create a customer",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CustomerCreate" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created customer.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Customer" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/api/v1/customers/{id}": {
+      "get": {
+        "tags": ["Customers"],
+        "summary": "Get a customer",
+        "parameters": [{ "$ref": "#/components/parameters/UuidPath" }],
+        "responses": {
+          "200": {
+            "description": "The requested customer.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Customer" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/accounts": {
+      "get": {
+        "tags": ["Accounts"],
+        "summary": "Search and list service accounts",
+        "parameters": [
+          { "$ref": "#/components/parameters/Search" },
+          {
+            "name": "customerId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          { "name": "zone", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["active", "inactive"] }
+          },
+          {
+            "name": "classification",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["Residential", "Commercial", "Industrial", "Government"]
+            }
+          },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/Limit" }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of matching accounts.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AccountPage" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      },
+      "post": {
+        "tags": ["Accounts"],
+        "summary": "Create a service account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/AccountCreate" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created service account.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Account" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/accounts/{id}/status": {
+      "patch": {
+        "tags": ["Accounts"],
+        "summary": "Activate or deactivate a service account",
+        "parameters": [{ "$ref": "#/components/parameters/UuidPath" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/AccountStatusUpdate" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated service account.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Account" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/accounts/{id}/meters": {
+      "get": {
+        "tags": ["Accounts", "Meters"],
+        "summary": "List a service account's meter installation history",
+        "parameters": [{ "$ref": "#/components/parameters/UuidPath" }],
+        "responses": {
+          "200": {
+            "description": "Installation events ordered by installation time.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/MeterHistoryPage" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/meters": {
+      "get": {
+        "tags": ["Meters"],
+        "summary": "List meters with their latest installation",
+        "responses": {
+          "200": {
+            "description": "Meter items and count.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": { "type": "array", "items": { "$ref": "#/components/schemas/Meter" } },
+                    "count": { "type": "integer" }
+                  },
+                  "required": ["items", "count"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meters/install": {
+      "post": {
+        "tags": ["Meters"],
+        "summary": "Install a meter on a service account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/MeterInstall" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The new installation.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Meter" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/api/v1/meters/replace": {
+      "post": {
+        "tags": ["Meters"],
+        "summary": "Replace an account's active meter",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/MeterReplacement" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The replacement meter installation.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Meter" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Search": {
+        "name": "q",
+        "in": "query",
+        "description": "Case-insensitive text search.",
+        "schema": { "type": "string", "minLength": 1, "maxLength": 200 }
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "schema": { "type": "integer", "minimum": 1, "default": 1 }
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+      },
+      "UuidPath": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      }
+    },
+    "schemas": {
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "phone": { "type": "string" },
+          "status": { "type": "string", "enum": ["active", "inactive", "archived"] },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "email", "phone", "status", "createdAt"]
+      },
+      "CustomerCreate": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 2 },
+          "email": { "type": "string", "format": "email" },
+          "phone": { "type": "string", "minLength": 7 },
+          "status": {
+            "type": "string",
+            "enum": ["active", "inactive", "archived"],
+            "default": "active"
+          }
+        },
+        "required": ["name", "email", "phone"]
+      },
+      "Account": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "customerId": { "type": "string", "format": "uuid" },
+          "address": { "type": "string" },
+          "zone": { "type": "string" },
+          "classification": {
+            "type": "string",
+            "enum": ["Residential", "Commercial", "Industrial", "Government"]
+          },
+          "status": { "type": "string", "enum": ["active", "inactive"] },
+          "activeMeterId": { "type": ["string", "null"], "format": "uuid" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "id",
+          "customerId",
+          "address",
+          "zone",
+          "classification",
+          "status",
+          "activeMeterId",
+          "createdAt"
+        ]
+      },
+      "AccountCreate": {
+        "type": "object",
+        "properties": {
+          "customerId": { "type": "string", "format": "uuid" },
+          "address": { "type": "string", "minLength": 5 },
+          "zone": { "type": "string", "minLength": 2 },
+          "classification": {
+            "type": "string",
+            "enum": ["Residential", "Commercial", "Industrial", "Government"]
+          },
+          "status": { "type": "string", "enum": ["active", "inactive"], "default": "active" }
+        },
+        "required": ["customerId", "address", "zone", "classification"]
+      },
+      "AccountStatusUpdate": {
+        "type": "object",
+        "properties": { "status": { "type": "string", "enum": ["active", "inactive"] } },
+        "required": ["status"]
+      },
+      "Meter": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "accountId": { "type": "string", "format": "uuid" },
+          "serialNumber": { "type": "string" },
+          "size": { "type": "string" },
+          "registerDigits": { "type": "integer", "minimum": 1 },
+          "currentReading": { "type": "number", "minimum": 0 },
+          "status": { "type": "string", "enum": ["active", "retired"] },
+          "installedAt": { "type": "string", "format": "date-time" },
+          "replacedAt": { "type": ["string", "null"], "format": "date-time" }
+        },
+        "required": [
+          "id",
+          "accountId",
+          "serialNumber",
+          "size",
+          "registerDigits",
+          "currentReading",
+          "status",
+          "installedAt",
+          "replacedAt"
+        ]
+      },
+      "MeterInstall": {
+        "type": "object",
+        "properties": {
+          "accountId": { "type": "string", "format": "uuid" },
+          "serialNumber": { "type": "string", "minLength": 3 },
+          "size": { "type": "string", "minLength": 2 },
+          "registerDigits": { "type": "integer", "minimum": 1 },
+          "currentReading": { "type": "number", "minimum": 0 },
+          "status": { "const": "active", "default": "active" }
+        },
+        "required": ["accountId", "serialNumber", "size", "registerDigits", "currentReading"]
+      },
+      "MeterReplacement": {
+        "type": "object",
+        "properties": {
+          "accountId": { "type": "string", "format": "uuid" },
+          "oldMeterId": { "type": "string", "format": "uuid" },
+          "newSerialNumber": { "type": "string", "minLength": 3 },
+          "newSize": { "type": "string", "minLength": 2 },
+          "registerDigits": { "type": "integer", "minimum": 1 },
+          "finalReading": { "type": "number", "minimum": 0 },
+          "currentReading": { "type": "number", "minimum": 0 },
+          "replacementAt": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "accountId",
+          "oldMeterId",
+          "newSerialNumber",
+          "newSize",
+          "registerDigits",
+          "finalReading",
+          "currentReading"
+        ]
+      },
+      "MeterInstallationHistory": {
+        "type": "object",
+        "properties": {
+          "installationId": { "type": "string", "format": "uuid" },
+          "meterId": { "type": "string", "format": "uuid" },
+          "serialNumber": { "type": "string" },
+          "size": { "type": "string" },
+          "registerDigits": { "type": "integer" },
+          "status": { "type": "string", "enum": ["active", "retired"] },
+          "installedAt": { "type": "string", "format": "date-time" },
+          "removedAt": { "type": ["string", "null"], "format": "date-time" },
+          "initialReading": { "type": "number" },
+          "finalReading": { "type": ["number", "null"] }
+        },
+        "required": [
+          "installationId",
+          "meterId",
+          "serialNumber",
+          "size",
+          "registerDigits",
+          "status",
+          "installedAt",
+          "removedAt",
+          "initialReading",
+          "finalReading"
+        ]
+      },
+      "CustomerPage": { "$ref": "#/components/schemas/PaginatedCustomer" },
+      "AccountPage": { "$ref": "#/components/schemas/PaginatedAccount" },
+      "PaginatedCustomer": {
+        "type": "object",
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/Customer" } },
+          "count": { "type": "integer" },
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "total": { "type": "integer" }
+        },
+        "required": ["items", "count", "page", "limit", "total"]
+      },
+      "PaginatedAccount": {
+        "type": "object",
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/Account" } },
+          "count": { "type": "integer" },
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "total": { "type": "integer" }
+        },
+        "required": ["items", "count", "page", "limit", "total"]
+      },
+      "MeterHistoryPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MeterInstallationHistory" }
+          },
+          "count": { "type": "integer" }
+        },
+        "required": ["items", "count"]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" },
+              "details": { "type": "array", "items": { "type": "object" } }
+            },
+            "required": ["code", "message"]
+          }
+        },
+        "required": ["error"]
+      }
+    },
+    "responses": {
+      "ValidationError": {
+        "description": "The request is invalid.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "NotFound": {
+        "description": "The requested resource was not found.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "Conflict": {
+        "description": "The operation conflicts with current state or a uniqueness constraint.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "ServiceUnavailable": {
+        "description": "The service database is unavailable.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    }
+  }
+}

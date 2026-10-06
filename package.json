@@ -1,0 +1,27 @@
+{
+  "name": "aquaflow-capstone",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "echo 'Run services with Docker Compose or a service-specific script.'",
+    "lint": "eslint apps services packages --ext .js,.jsx,.ts,.tsx",
+    "format": "prettier --write package.json .eslintrc.cjs .prettierrc.json tsconfig*.json \"apps/**/*.{js,jsx,ts,tsx,json,css,mjs}\" \"services/**/*.{js,ts,json}\" \"packages/**/*.{js,ts,json}\" \"infra/**/*.{yml,yaml,json}\" \"docs/**/*.md\" README.md",
+    "format:check": "prettier --check package.json .eslintrc.cjs .prettierrc.json tsconfig*.json \"apps/**/*.{js,jsx,ts,tsx,json,css,mjs}\" \"services/**/*.{js,ts,json}\" \"packages/**/*.{js,ts,json}\" \"infra/**/*.{yml,yaml,json}\" \"docs/**/*.md\" README.md",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "packageManager": "npm@11.19.0",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.8"
+  }
+}

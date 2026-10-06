@@ -1,0 +1,142 @@
+workloads:
+  auth:
+    image: aquaflow/auth:0.1.0
+    port: 3002
+    readOnlyRootFilesystem: true
+    env:
+      - name: PORT
+        value: '3002'
+      - name: NODE_ENV
+        value: production
+      - name: JWT_ISSUER
+        value: aquaflow
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: aquaflow-secrets
+            key: jwt-secret
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: '1'
+        memory: 512Mi
+  billing:
+    image: aquaflow/billing:0.1.0
+    port: 3004
+    readOnlyRootFilesystem: true
+    env:
+      - name: PORT
+        value: '3004'
+      - name: NODE_ENV
+        value: production
+    resources:
+      requests:
+        cpu: 50m
+        memory: 96Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  customer:
+    image: aquaflow/customer:0.1.0
+    port: 3001
+    readOnlyRootFilesystem: true
+    env:
+      - name: PORT
+        value: '3001'
+      - name: NODE_ENV
+        value: production
+    resources:
+      requests:
+        cpu: 50m
+        memory: 96Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  gateway:
+    image: aquaflow/gateway:0.1.0
+    port: 8080
+    readOnlyRootFilesystem: true
+    env:
+      - name: PORT
+        value: '8080'
+      - name: NODE_ENV
+        value: production
+      - name: CUSTOMER_URL
+        value: http://aquaflow-customer:3001
+      - name: AUTH_URL
+        value: http://aquaflow-auth:3002
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: '1'
+        memory: 256Mi
+  notification:
+    image: aquaflow/notification:0.1.0
+    port: 3006
+    readOnlyRootFilesystem: true
+    env:
+      - name: PORT
+        value: '3006'
+      - name: NODE_ENV
+        value: production
+    resources:
+      requests:
+        cpu: 50m
+        memory: 96Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  payment:
+    image: aquaflow/payment:0.1.0
+    port: 3005
+    readOnlyRootFilesystem: true
+    env:
+      - name: PORT
+        value: '3005'
+      - name: NODE_ENV
+        value: production
+    resources:
+      requests:
+        cpu: 50m
+        memory: 96Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  reading:
+    image: aquaflow/reading:0.1.0
+    port: 3003
+    readOnlyRootFilesystem: true
+    env:
+      - name: PORT
+        value: '3003'
+      - name: NODE_ENV
+        value: production
+    resources:
+      requests:
+        cpu: 50m
+        memory: 96Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  web:
+    image: aquaflow/web:0.1.0
+    port: 3000
+    readOnlyRootFilesystem: true
+    env:
+      - name: PORT
+        value: '3000'
+      - name: NODE_ENV
+        value: production
+      - name: API_BASE_URL
+        value: http://aquaflow-gateway:8080
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: '1'
+        memory: 768Mi

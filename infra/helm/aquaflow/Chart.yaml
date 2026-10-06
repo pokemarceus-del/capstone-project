@@ -1,0 +1,6 @@
+apiVersion: v2
+name: aquaflow
+description: Development deployment chart for the AquaFlow capstone services
+type: application
+version: 0.1.0
+appVersion: '0.1.0'

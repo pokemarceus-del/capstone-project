@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CUSTOMER_DATABASE_URL")
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AccountClassification {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  GOVERNMENT
+}
+
+enum MeterStatus {
+  ACTIVE
+  RETIRED
+}
+
+model Customer {
+  id        String         @id @default(uuid()) @db.Uuid
+  name      String         @db.VarChar(200)
+  email     String         @db.VarChar(320)
+  phone     String         @db.VarChar(40)
+  status    CustomerStatus @default(ACTIVE)
+  createdAt DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime       @updatedAt @db.Timestamptz(6)
+  accounts  Account[]
+
+  @@index([email])
+  @@index([status])
+  @@map("customers")
+}
+
+model Zone {
+  id        String           @id @default(uuid()) @db.Uuid
+  name      String           @unique @db.VarChar(100)
+  createdAt DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime         @updatedAt @db.Timestamptz(6)
+  addresses ServiceAddress[]
+  routes    Route[]
+
+  @@map("zones")
+}
+
+model ServiceAddress {
+  id          String    @id @default(uuid()) @db.Uuid
+  addressLine String    @db.VarChar(500)
+  zoneId      String    @db.Uuid
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(6)
+  zone        Zone      @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  accounts    Account[]
+
+  @@index([zoneId])
+  @@map("service_addresses")
+}
+
+model Route {
+  id          String            @id @default(uuid()) @db.Uuid
+  zoneId      String            @db.Uuid
+  name        String            @db.VarChar(100)
+  createdAt   DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime          @updatedAt @db.Timestamptz(6)
+  zone        Zone              @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  accounts    Account[]
+  assignments RouteAssignment[]
+
+  @@unique([zoneId, name])
+  @@index([zoneId])
+  @@map("routes")
+}
+
+model RouteAssignment {
+  id           String    @id @default(uuid()) @db.Uuid
+  routeId      String    @db.Uuid
+  readerUserId String    @db.Uuid
+  startsAt     DateTime  @db.Timestamptz(6)
+  endsAt       DateTime? @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  route        Route     @relation(fields: [routeId], references: [id], onDelete: Restrict)
+
+  @@index([routeId, startsAt, endsAt])
+  @@index([readerUserId, startsAt, endsAt])
+  @@map("route_assignments")
+}
+
+model Account {
+  id                 String                @id @default(uuid()) @db.Uuid
+  customerId         String                @db.Uuid
+  serviceAddressId   String                @db.Uuid
+  routeId            String?               @db.Uuid
+  classification     AccountClassification
+  status             AccountStatus         @default(ACTIVE)
+  createdAt          DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime              @updatedAt @db.Timestamptz(6)
+  customer           Customer              @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  serviceAddress     ServiceAddress        @relation(fields: [serviceAddressId], references: [id], onDelete: Restrict)
+  route              Route?                @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  meterInstallations MeterInstallation[]
+
+  @@index([customerId])
+  @@index([serviceAddressId])
+  @@index([routeId])
+  @@index([classification, status])
+  @@map("accounts")
+}
+
+model Meter {
+  id             String              @id @default(uuid()) @db.Uuid
+  serialNumber   String              @unique @db.VarChar(100)
+  size           String              @db.VarChar(40)
+  registerDigits Int
+  status         MeterStatus         @default(ACTIVE)
+  createdAt      DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(6)
+  installations  MeterInstallation[]
+
+  @@map("meters")
+}
+
+model MeterInstallation {
+  id                   String    @id @default(uuid()) @db.Uuid
+  accountId            String    @db.Uuid
+  meterId              String    @db.Uuid
+  installedAt          DateTime  @db.Timestamptz(6)
+  initialRegisterValue Decimal   @db.Decimal(65, 30)
+  removedAt            DateTime? @db.Timestamptz(6)
+  finalRegisterValue   Decimal?  @db.Decimal(65, 30)
+  createdAt            DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(6)
+  account              Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  meter                Meter     @relation(fields: [meterId], references: [id], onDelete: Restrict)
+
+  @@index([accountId, installedAt])
+  @@index([meterId, installedAt])
+  @@map("meter_installations")
+}

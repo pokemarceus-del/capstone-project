@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    { "path": "./apps/web" },
+    { "path": "./services/gateway" },
+    { "path": "./services/auth" },
+    { "path": "./services/customer" },
+    { "path": "./services/reading" },
+    { "path": "./services/billing" },
+    { "path": "./services/payment" },
+    { "path": "./services/notification" }
+  ]
+}

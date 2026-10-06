@@ -1,0 +1,103 @@
+{{- range $name, $workload := .Values.workloads }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aquaflow-{{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/part-of: aquaflow
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+      app.kubernetes.io/part-of: aquaflow
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        app.kubernetes.io/part-of: aquaflow
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: {{ $name }}
+          image: {{ $workload.image | quote }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: {{ $workload.port }}
+              protocol: TCP
+          env:
+            {{- toYaml $workload.env | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ $workload.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            {{- toYaml $workload.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: {{ if eq $name "web" }}/{{ else }}/healthz{{ end }}
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: {{ if eq $name "web" }}/{{ else }}/healthz{{ end }}
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: {{ if eq $name "web" }}/{{ else }}/healthz{{ end }}
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 2
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if eq $name "web" }}
+            - name: next-cache
+              mountPath: /app/.next/cache
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+        {{- if eq $name "web" }}
+        - name: next-cache
+          emptyDir:
+            sizeLimit: 256Mi
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aquaflow-{{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/part-of: aquaflow
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/part-of: aquaflow
+  ports:
+    - name: http
+      port: {{ $workload.port }}
+      targetPort: http
+      protocol: TCP
+{{- end }}

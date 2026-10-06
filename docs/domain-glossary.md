@@ -1,0 +1,30 @@
+# AquaFlow domain glossary
+
+- Customer: person or organization responsible for paying the bill.
+- Service account: billable property connection at one service address.
+- Meter: physical water meter with serial number and register reading.
+- Billing period: defined water-use period with a reading window.
+- Reading: meter register value captured on a date.
+- Estimated reading: created when an actual reading is unavailable.
+- Tariff: versioned price schedule applied to consumption.
+- Bill: immutable statement for a service account and period.
+- Ledger: running history of credits and debits.
+- Arrears: overdue unpaid balance carried forward.
+- Role: permission grouping for admin, billing officer, reader, customer.
+- Zone / route: geographic grouping used for assignments.
+- Payment: payment attempt or confirmed settlement.
+- Notification: message sent to a user by email or portal channels.
+- Account balance: sum of posted ledger debits and credits for a service account.
+- Adjustment: approved debit or credit that corrects an issued bill without changing it.
+- Bill run: a controlled operation that previews, reviews, and issues bills for a billing period.
+- Consumption: water volume used during a period, calculated from valid meter readings.
+- Idempotency key: client-supplied identifier that makes a retried mutation safe from duplication.
+- Inbox: consumer-side record of processed event IDs used to suppress duplicate side effects.
+- Ledger entry: immutable debit or credit that changes an account balance.
+- Outbox: transactionally stored event awaiting reliable publication to the message broker.
+- Reading window: allowed date/time interval in which a period's meter reading may be captured.
+- Refresh token: longer-lived credential exchanged for a new access token and rotated on use.
+- Rollover: meter register reaches its maximum and restarts at zero.
+- Tariff version: immutable effective-dated set of rates and fees used to calculate a bill.
+- Transactional outbox: pattern that commits a business change and its event in one database transaction.
+- Webhook: provider-to-AquaFlow HTTP notification about an external payment event.

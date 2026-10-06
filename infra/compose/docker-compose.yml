@@ -1,0 +1,127 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    expose:
+      - '5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aquaflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-customer_db}
+    volumes:
+      - customer_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  customer:
+    build:
+      context: ../..
+      dockerfile: services/customer/Dockerfile
+    expose:
+      - '3001'
+    environment:
+      PORT: 3001
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CUSTOMER_DATABASE_URL: ${CUSTOMER_DATABASE_URL:?Set CUSTOMER_DATABASE_URL in .env}
+      CUSTOMER_SEED_DEMO: ${CUSTOMER_SEED_DEMO:-true}
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3001/readyz').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  auth:
+    build:
+      context: ../..
+      dockerfile: services/auth/Dockerfile
+    expose:
+      - '3002'
+    environment:
+      PORT: 3002
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_ISSUER: aquaflow
+      NODE_ENV: production
+      AUTH_SEED_ADMIN_EMAIL: ${AUTH_SEED_ADMIN_EMAIL:-}
+      AUTH_SEED_ADMIN_PASSWORD: ${AUTH_SEED_ADMIN_PASSWORD:-}
+
+  reading:
+    build:
+      context: ../..
+      dockerfile: services/reading/Dockerfile
+    expose:
+      - '3003'
+    environment:
+      PORT: 3003
+
+  billing:
+    build:
+      context: ../..
+      dockerfile: services/billing/Dockerfile
+    expose:
+      - '3004'
+    environment:
+      PORT: 3004
+
+  payment:
+    build:
+      context: ../..
+      dockerfile: services/payment/Dockerfile
+    expose:
+      - '3005'
+    environment:
+      PORT: 3005
+
+  notification:
+    build:
+      context: ../..
+      dockerfile: services/notification/Dockerfile
+    expose:
+      - '3006'
+    environment:
+      PORT: 3006
+
+  gateway:
+    build:
+      context: ../..
+      dockerfile: services/gateway/Dockerfile
+    ports:
+      - '8080:8080'
+    environment:
+      PORT: 8080
+      CUSTOMER_URL: http://customer:3001
+      AUTH_URL: http://auth:3002
+    depends_on:
+      customer:
+        condition: service_healthy
+      auth:
+        condition: service_started
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+      API_BASE_URL: http://gateway:8080
+      DEMO_ADMIN_EMAIL: ${AUTH_SEED_ADMIN_EMAIL:-}
+      DEMO_ADMIN_PASSWORD: ${AUTH_SEED_ADMIN_PASSWORD:-}
+    depends_on:
+      - gateway
+
+volumes:
+  customer_postgres_data:
