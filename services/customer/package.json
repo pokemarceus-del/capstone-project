@@ -2,6 +2,11 @@
   "version": "0.1.0",
   "name": "@aquaflow/customer",
   "scripts": {
+    "pretest": "npm run prisma:generate",
+    "pretest:integration": "npm run prisma:generate",
+    "prebuild": "npm run prisma:generate",
+    "pretypecheck": "npm run prisma:generate",
+    "predev": "npm run prisma:generate",
     "test": "vitest run",
     "test:integration": "node -e \"if (!process.env.CUSTOMER_INTEGRATION_DATABASE_URL) { console.error('Set CUSTOMER_INTEGRATION_DATABASE_URL to a dedicated *_test PostgreSQL database'); process.exit(1); }\" && vitest run --testTimeout 30000 tests/customer.integration.test.ts",
     "build": "tsc -p tsconfig.json",

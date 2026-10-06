@@ -35,7 +35,8 @@ order, current status, acceptance gates, and next work queue.
 
 From the repo root:
 
-- npm install
+- npm ci
+- npm run prisma:generate --workspace=@aquaflow/customer
 - npm run lint
 - npm run format:check
 - npm run typecheck

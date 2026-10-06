@@ -19,7 +19,11 @@ enforcement can be enabled in milestone M9 once a remote repository and automate
 
 ## Current repository state
 
-The local Git repository has been initialized on `main`. No baseline commit has been created, so
-the project files currently appear as untracked content. Review the full status and `.gitignore`
-before creating the first commit; in particular, never stage `.env` files, secrets, generated
-artifacts, or user data.
+The initial project baseline is committed on `main`. M1 is not considered complete until the
+committed state passes its clean-clone build and test gate. Keep `.env` files, secrets, generated
+artifacts, and user data out of commits.
+
+After `npm ci`, Prisma Client generation is wired into the Customer Service's test, integration
+test, build, typecheck, and development commands. The root unit-test command also generates it
+before running tests. `.gitattributes` keeps text files on LF line endings across platforms so
+Prettier checks behave consistently on Windows and Unix.

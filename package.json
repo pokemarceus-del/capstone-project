@@ -12,6 +12,7 @@
     "lint": "eslint apps services packages --ext .js,.jsx,.ts,.tsx",
     "format": "prettier --write package.json .eslintrc.cjs .prettierrc.json tsconfig*.json \"apps/**/*.{js,jsx,ts,tsx,json,css,mjs}\" \"services/**/*.{js,ts,json}\" \"packages/**/*.{js,ts,json}\" \"infra/**/*.{yml,yaml,json}\" \"docs/**/*.md\" README.md",
     "format:check": "prettier --check package.json .eslintrc.cjs .prettierrc.json tsconfig*.json \"apps/**/*.{js,jsx,ts,tsx,json,css,mjs}\" \"services/**/*.{js,ts,json}\" \"packages/**/*.{js,ts,json}\" \"infra/**/*.{yml,yaml,json}\" \"docs/**/*.md\" README.md",
+    "pretest": "npm run prisma:generate --workspace @aquaflow/customer",
     "test": "vitest run --passWithNoTests",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
