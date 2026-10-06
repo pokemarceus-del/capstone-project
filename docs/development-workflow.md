@@ -22,6 +22,9 @@ enforcement can be enabled in milestone M9 once a remote repository and automate
 The initial project baseline is committed on `main`. M1 is not considered complete until the
 committed state passes its clean-clone build and test gate. Keep `.env` files, secrets, generated
 artifacts, and user data out of commits.
+The M1 gate passed from a fresh clone at `94d20b4`: unit and PostgreSQL integration tests,
+workspace typechecks, lint, format checks, all Compose image builds, service health, and web/API
+smoke checks succeeded.
 
 After `npm ci`, Prisma Client generation is wired into the Customer Service's test, integration
 test, build, typecheck, and development commands. The root unit-test command also generates it

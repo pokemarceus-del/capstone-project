@@ -121,9 +121,17 @@
   contexts; moved Compose builds to the repository root, copied shared TypeScript config into each
   image, and added a root `.dockerignore` to keep local dependencies/build output out of contexts.
   All eight images then built successfully and the stack became healthy.
-- Literal clean-Git-clone verification remains unverified because the repository has no baseline
-  commit (all project files are untracked). Current-worktree Compose and test validation is
-  complete, but M1's exact clean-clone acceptance gate should not be marked complete until the
-  user decides how to establish a cloneable baseline. Keep the stack running for inspection.
-- Next decision: recommend authorizing a reviewed first baseline commit, then running the same
-  Compose/test gate from that clean clone. Do not begin M2 or later milestones before the M1 gate.
+- Created the reviewed initial baseline commit `211d419`. A clean clone exposed two reproducibility
+  gaps: npm 11 did not generate Prisma Client during `npm ci`, and Windows CRLF checkouts failed
+  Prettier. Added Customer command hooks to generate Prisma Client and `.gitattributes` to enforce
+  consistent LF text files. Commit `94d20b4` records these fixes.
+- Removed the known hard-coded demo admin password. Auth now has no default administrator; optional
+  validated seed credentials are supplied through environment variables. Two focused Auth tests
+  cover the absent default user and hash verification for explicit seeding.
+- M1 item 10 passed from a new clone of `94d20b4` after `npm ci`: 17 unit tests, all 6 PostgreSQL
+  integration tests, all workspace typechecks, lint, and formatting passed. All eight Compose
+  images built; PostgreSQL and Customer were healthy; the Gateway returned HTTP 200 with 20 seeded
+  customers; the web app returned HTTP 200. M1 is complete.
+- The clean-clone Compose stack remains running for inspection. The original Compose stack was
+  stopped without deleting its named database volume; the dedicated PostgreSQL test container
+  also remains running. M2 has not started and awaits the user's next task selection.

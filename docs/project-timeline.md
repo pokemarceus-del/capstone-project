@@ -141,20 +141,31 @@ timestamps before the current session are approximate and inferred from project 
   Auth's Alpine `argon2` compilation, and changed service/web build contexts to the repository
   root while copying each workspace's shared TS config. Added `.dockerignore` exclusions for local
   dependencies and generated output. `docker compose config --quiet` also passes.
-- M1's literal clean-Git-clone acceptance check remains pending because the local repository has
-  no baseline commit. The current worktree Docker build/start/test gate passes; the user must decide
-  whether to establish a reviewed baseline commit before a literal clone is possible. The running
-  Compose stack is intentionally left available for inspection.
+- A reviewed baseline was committed as `211d419`, followed by `94d20b4` to make clean-clone
+  validation reproducible. The first clean clone exposed npm 11 skipping Prisma's dependency
+  lifecycle generation and Windows checkout line endings breaking Prettier. Added Prisma
+  generation hooks for Customer tests, builds, typechecks, and development, plus LF text policy in
+  `.gitattributes`.
+- Removed the hard-coded demo administrator password; Auth now creates no default user and accepts
+  optional, validated `AUTH_SEED_ADMIN_EMAIL`/`AUTH_SEED_ADMIN_PASSWORD` settings. Auth tests cover
+  absent default users and password hashing for explicit local seeding.
+- The literal M1 clean-clone gate passed at `94d20b4` after `npm ci`: 17 unit tests and all 6
+  PostgreSQL integration tests passed; all workspaces typechecked; lint and format checks passed.
+  All eight images built and the Compose stack became healthy. The Gateway customer-list endpoint
+  returned HTTP 200 with 20 seeded records, and the web app returned HTTP 200. M1 is complete; no
+  M2 work has started.
 
 ## Current verified state
 
-- All npm workspace TypeScript checks and the Customer Service build pass; the project test run
-  reports 15 passing unit tests, and all 6 PostgreSQL integration tests pass against the dedicated
-  test database. Root lint and formatting checks pass.
+- The clean clone at `94d20b4` passed all workspace TypeScript checks, Customer build, 17 unit
+  tests, all 6 PostgreSQL integration tests, lint, and formatting checks.
 - Prisma schema validation and client generation pass. The Customer Service Docker image now copies
   its Prisma schema/migrations and applies migrations before startup.
-- All eight Docker images build from the repository source tree. Full Compose startup passes;
-  PostgreSQL and Customer health checks are healthy, and the Gateway API and web app respond.
+- All eight Docker images built from the clean clone. Its Compose stack is currently running;
+  PostgreSQL and Customer health checks are healthy, Gateway returned 20 seeded customers with
+  HTTP 200, and the web app returned HTTP 200.
+- The original Compose stack was stopped without removing its `compose_customer_postgres_data`
+  volume. The separate `aquaflow-customer-test-db` PostgreSQL test container remains running.
 - Helm chart, values, and Docker Compose YAML parsed successfully.
 - Deployment structure checks confirmed all eight chart workloads have images, ports, environment,
   resource requests, and limits.
@@ -170,11 +181,10 @@ timestamps before the current session are approximate and inferred from project 
 
 1. Review the M0 domain/context checkpoint and unresolved business questions in
    `docs/implementation-roadmap.md`.
-2. M1's Docker Compose build/start/test gate passes from the current worktree. Establish a reviewed
-   first Git baseline commit only with the user's approval, then verify the exact clean-clone gate.
-   Do not advance to M2 before the strict M1 acceptance gate is resolved.
-3. Fix the M2 refresh-token lookup before relying on refresh; then add durable sessions,
-   production-safe initial admin provisioning, and authorization on user-management endpoints.
+2. M1 is complete, including the strict clean-clone Compose/test gate. Await the user's choice
+   before beginning the next plan-ordered task.
+3. When selected, begin M2 item 1: durable users, roles, refresh tokens, login events, and
+   customer-account links. Address the known refresh-token defect within M2.
 4. Extend gateway routes for reading, billing, payment, and notification; review gateway proxy
    error handling, forwarded headers, CORS, and rate-limit storage.
 5. Build out staff, customer, and reader workflows beyond the current web overview page.
@@ -188,15 +198,12 @@ timestamps before the current session are approximate and inferred from project 
 
 ## Resume here
 
-Checkpoint A has been passed. M1 items 1–9 (quality tooling; PostgreSQL/Prisma setup and schema;
-Prisma-backed Customer Service; account transitions, search/filtering/pagination, replacement
-history, separate replacement readings, deterministic seed data, PostgreSQL integration tests,
-structured logging/readiness, and OpenAPI) are implemented. The current-worktree item 10 Compose
-build/start/test gate passes, but its literal clean-clone check awaits a first Git baseline commit
-decision. Do not start M2 before that strict acceptance gate is resolved. The Helm chart under
-`infra/helm/aquaflow` was created out of sequence and must remain exploratory until the plan
-reaches M10. Docker is available and the Compose stack is running; Helm and kubectl remain
-unavailable.
+Checkpoint A has been passed, and M1 items 1–10 are complete. The strict clean-clone gate passed
+at commit `94d20b4`: tests, typechecks, lint, format, all eight Compose image builds, service
+health, Gateway customer listing, and web HTTP checks all succeeded. Do not start M2 until the user
+selects the next task. The Helm chart under `infra/helm/aquaflow` was created out of sequence and
+must remain exploratory until the plan reaches M10. Docker is available and the clean-clone Compose
+stack is running; Helm and kubectl remain unavailable.
 
 For the project direction, refer to the AquaFlow development plan in the workspace root. Keep this
 timeline updated when meaningful milestones are completed so it remains the project hand-off record.
