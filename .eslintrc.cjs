@@ -12,7 +12,13 @@ module.exports = {
   },
   plugins: ['@typescript-eslint'],
   extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
-  ignorePatterns: ['**/dist/**', '**/.next/**', '**/coverage/**', '**/node_modules/**'],
+  ignorePatterns: [
+    '**/dist/**',
+    '**/generated/**',
+    '**/.next/**',
+    '**/coverage/**',
+    '**/node_modules/**',
+  ],
   rules: {
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/no-unused-vars': [

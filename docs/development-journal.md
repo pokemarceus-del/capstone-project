@@ -134,4 +134,146 @@
   customers; the web app returned HTTP 200. M1 is complete.
 - The clean-clone Compose stack remains running for inspection. The original Compose stack was
   stopped without deleting its named database volume; the dedicated PostgreSQL test container
-  also remains running. M2 has not started and awaits the user's next task selection.
+  also remains running. At this handoff M2 had not yet started; the user later selected M2 item 1.
+
+## 2026-10-07 — M2 item 1: durable Auth persistence
+
+- Added a dedicated Auth PostgreSQL database and initial Prisma migration for durable users, role
+  records, refresh sessions, login events, and customer-account links. External Customer and
+  Account identifiers intentionally have no cross-database foreign keys.
+- Replaced the in-memory AuthStore with Prisma persistence. Startup deploys migrations, idempotently
+  seeds four role records, validates database configuration, and exposes database-aware readiness.
+  Optional admin provisioning remains explicit and does not reset an existing password.
+- Auth persists login success/failure events and customer-account links, stores only stable
+  SHA-256 digests for random refresh tokens, and excludes expired or revoked sessions from lookup.
+  This corrects the salted Argon2 lookup bug; refresh rotation/reuse detection and login throttling
+  remain planned M2 work.
+- Isolated the Auth Prisma Client output from Customer's generated client. Added install-safe client
+  generation hooks, Auth integration tests with an `_test` database guard and migration runner,
+  Compose database/health dependencies, generated-artifact ignores, and updated local-stack docs.
+- Validation: 29 unit and PostgreSQL integration tests pass (19 unit, 10 integration); all
+  workspace typechecks, lint, format, Prisma validation, and Compose config validation pass.
+  Auth Docker image build, migration, readiness, login/profile, and post-container-restart refresh
+  all succeeded. The full eight-service stack passed on fresh volumes in isolated Compose project
+  `aquaflow-m2-validation`.
+- A reuse attempt with the existing default Customer database volume failed because its stored
+  password does not match this session's temporary test value. Preserved the volume unchanged and
+  used an isolated fresh-volume Compose project for validation.
+- M2 item 1 was complete; the user subsequently selected M2 item 2 as the next task.
+
+## 2026-10-07 — M2 item 2: logout and asymmetric JWT/JWKS
+
+- Implemented Auth RS256 signing with active `kid`, issuer and expiry claims, strict algorithm/key-ID
+  verification, validated RSA keys, and a public JWKS endpoint. The public key ring supports old
+  and new keys being published together during rotation; Gateway proxies the JWKS endpoint.
+- Added idempotent Auth/Gateway logout that revokes the refresh-token SHA-256 digest and returns 204
+  even when the refresh token is unknown. Existing stateless access tokens remain valid for at most
+  15 minutes after logout.
+- Replaced Compose's `JWT_SECRET` with separate active key ID, PKCS#8 private key, and public-JWKS
+  settings. Added a no-overwrite local RSA key generator and documented ignored key-file handling,
+  secret-manager use, and staged rotation.
+- Added four JWT unit tests for signing/key IDs, verification across rotation overlap, unknown key
+  and algorithm rejection, and private/public key mismatch. Auth PostgreSQL integration coverage
+  verifies digest-based logout revocation.
+- Validation: 23 root unit tests passed, all four Auth PostgreSQL integration tests passed,
+  workspace typechecks/lint/format passed, and Auth/Gateway rebuilt healthy in the isolated Compose
+  project. Gateway smoke tests passed for JWKS, RS256 `kid`, logout 204/idempotency, and rejection
+  of the revoked refresh token.
+- M2 item 2 was complete at this handoff. The user subsequently selected item 3, now documented
+  below.
+
+## 2026-10-07 — M2 item 3: refresh rotation and login lockout
+
+- Added persisted `familyId` to refresh sessions and migrated existing rows into separate families.
+  Refresh atomically consumes the presented token, creates a seven-day replacement in the same
+  family, and returns both the new access and refresh tokens. A replay revokes every active token
+  in that family, without revoking unrelated login families. Logout revokes a whole family.
+- The selected lockout policy is five consecutive failures per normalized email in a rolling
+  15-minute window. Login remains blocked while all five failures are in-window, locked requests
+  receive the same generic invalid-credentials response, and successful login resets the failure
+  streak.
+- Added integration coverage for migration-backed family rotation/replay, concurrent token use,
+  unrelated-family isolation, expiration, and lockout failure-count behavior.
+- The first concurrency test run exceeded Prisma's default transaction acquisition wait. Set
+  `maxWait` and transaction timeout to 10 seconds and reran the Auth PostgreSQL suite successfully.
+- Validation: all seven Auth PostgreSQL integration tests passed; root unit suite passed 23 tests
+  (13 database integration tests are skipped by the default root command); all workspace
+  typechecks, lint, Prettier, and Auth Prisma validation passed. Auth Docker build,
+  migration/startup, and Gateway smoke tests passed. Temporary smoke-test records were cleaned up.
+- M2 item 3 is complete. The next plan-ordered item is M2 item 4: shared JWT validation and
+  permission middleware on Customer Service; the user subsequently selected it.
+
+## 2026-10-07 — M2 item 4: shared JWT verification and Customer permissions
+
+- Added `@aquaflow/authentication` as a shared, dependency-free RS256 implementation for access
+  token signing, public JWKS validation, and token verification. Both Auth and Customer now use
+  the same algorithm, `kid`, issuer, expiration, and claim validation.
+- Customer startup requires a public issuer/JWKS key ring. Compose passes only those public values
+  to Customer; its private signing key remains exclusively in Auth.
+- Added Customer bearer-token middleware, generic 401 and 403 responses, and public exceptions for
+  health, readiness, and the OpenAPI document. A typed token-validation error distinguishes
+  expected invalid credentials from unexpected verifier failures.
+- Implemented the user's approved interim role policy: Admin can perform all Customer Service
+  operations; Billing Officer can read Customer/Account/Meter data but cannot write; Customer and
+  Meter Reader have no data-route access until tenant ownership and assignment scoping is available.
+  Added the Gateway proxy route for Customer service info and documented bearer security in OpenAPI.
+- Added role-policy unit coverage and a PostgreSQL API integration test for required authentication,
+  invalid-token handling, role access/denial, and public probes.
+- Validation: 29 root unit tests passed; all 7 Customer and 7 Auth PostgreSQL integration tests
+  passed separately. Workspace typechecks, lint, and Prettier passed. Auth/Customer/Gateway images
+  rebuilt; Auth and Customer became healthy, and a 12-case Gateway-to-Customer role smoke check
+  plus web/Gateway health checks passed. Temporary test users/events were removed.
+- M2 item 4 is complete. Customer and Meter Reader data access must stay denied until their
+  ownership/assignment controls are implemented. The user selected M2 item 5 next.
+
+## 2026-10-07 — M2 item 5: verified customer registration and local role identities
+
+- Resolved the open verification question with the user's selection: staff issue a one-time
+  invitation for an existing active Customer record and deliver it out of band to its contact.
+  The invitation cannot be generated from user-supplied account data; Auth forwards the Admin
+  bearer to Customer Service to verify the customer and load all associated accounts. Email
+  delivery remains deferred to M7.
+- Added an Auth migration for invitation digests, customer/account references, issuer, expiration,
+  redemption, and `emailVerifiedAt`. Invitations contain a 256-bit random code, only its SHA-256
+  digest is stored, and each code expires after 24 hours.
+- Added Admin-protected invitation issuance and a public registration endpoint. Registration hashes
+  the password, creates only a Customer-role account, marks the email verified, links every
+  associated account, and consumes invitations in a single database transaction. The Auth user
+  list and staff-user creation routes now require Admin access; direct Customer-role creation is
+  rejected.
+- Added an explicit local-only seeding switch requiring four unique addresses and four distinct
+  passwords (16 characters minimum); it is denied in production or other non-development/test
+  modes. No default credentials are provided.
+- Validation: 16 Auth unit tests and 9 PostgreSQL Auth integration tests passed. The integration
+  coverage verifies invitation hashing, user/role restrictions, all customer-account links,
+  concurrent one-time redemption, successful login, and idempotent seeding. Auth, Customer, and
+  Gateway images rebuilt; the Auth migration applied and all three services were healthy. A
+  Gateway-based smoke test logged in all four role seeds and completed invitation, registration,
+  and Customer login against the seeded Customer database. Temporary users, invitations, and login
+  events were removed; the running stack now has local identity seeding disabled.
+- M2 item 5 was complete; M2 item 6 was the selected next task.
+
+## 2026-10-07 — M2 item 6: Auth audit events and endpoint permissions
+
+- Added a persisted Auth security-audit table and an Admin-only, bounded audit-events endpoint,
+  exposed through Gateway. Login outcomes are written atomically with login events; refresh
+  rotation/reuse/rejection, logout, Admin endpoint denials, staff-user creation, Admin reads,
+  invitation issuance, and registration outcomes are also recorded. Sensitive mutations and
+  their success audit row share one transaction.
+- Kept audit fields deliberately narrow: event/action, outcome, actor and target IDs, timestamp.
+  Raw secrets and tokens are never recorded. Existing login-event email storage remains for
+  lockout counting and is not duplicated in audit rows. Customer 401/403 results produce structured
+  warning logs; they are not forwarded into Auth's database.
+- Made the Customer route/method inventory authoritative for authorization. The complete matrix
+  now denies unknown routes/methods, permits Admin operations, restricts Billing Officer to GET
+  and HEAD reads, and keeps Customer and Meter Reader denied pending data scoping. Added policy and
+  HTTP integration coverage for all roles and declared endpoint methods.
+- Validation: root unit suite 34 passed / 18 integration skipped; Auth PostgreSQL integration 10
+  passed; Customer PostgreSQL integration 8 passed. Auth, Customer, and Gateway builds/typechecks,
+  ESLint, Prettier, Prisma schema validation/generation, and whitespace checks passed. Auth migration
+  deployment reported no pending migrations. The required local Compose `.env` values are absent,
+  so the active prior validation stack was not rebuilt. The built Gateway was smoke-tested against
+  a local stub Auth upstream and forwarded the audit route's HTTP 401 as expected; a
+  Compose-connected Gateway-to-Auth smoke test remains unrun.
+- M2 item 6 is complete. Checkpoint B is the next plan-ordered gate; do not advance into M3 before
+  that gate is approved. No commit was created.

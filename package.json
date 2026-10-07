@@ -10,9 +10,9 @@
   "scripts": {
     "dev": "echo 'Run services with Docker Compose or a service-specific script.'",
     "lint": "eslint apps services packages --ext .js,.jsx,.ts,.tsx",
-    "format": "prettier --write package.json .eslintrc.cjs .prettierrc.json tsconfig*.json \"apps/**/*.{js,jsx,ts,tsx,json,css,mjs}\" \"services/**/*.{js,ts,json}\" \"packages/**/*.{js,ts,json}\" \"infra/**/*.{yml,yaml,json}\" \"docs/**/*.md\" README.md",
-    "format:check": "prettier --check package.json .eslintrc.cjs .prettierrc.json tsconfig*.json \"apps/**/*.{js,jsx,ts,tsx,json,css,mjs}\" \"services/**/*.{js,ts,json}\" \"packages/**/*.{js,ts,json}\" \"infra/**/*.{yml,yaml,json}\" \"docs/**/*.md\" README.md",
-    "pretest": "npm run prisma:generate --workspace @aquaflow/customer",
+    "format": "prettier --write package.json .eslintrc.cjs .prettierrc.json tsconfig*.json \"apps/**/*.{js,jsx,ts,tsx,json,css,mjs}\" \"services/**/*.{js,mjs,ts,json}\" \"packages/**/*.{js,ts,json}\" \"infra/**/*.{yml,yaml,json}\" \"docs/**/*.md\" README.md",
+    "format:check": "prettier --check package.json .eslintrc.cjs .prettierrc.json tsconfig*.json \"apps/**/*.{js,jsx,ts,tsx,json,css,mjs}\" \"services/**/*.{js,mjs,ts,json}\" \"packages/**/*.{js,ts,json}\" \"infra/**/*.{yml,yaml,json}\" \"docs/**/*.md\" README.md",
+    "pretest": "npm run prisma:generate --workspace @aquaflow/customer && npm run prisma:generate --workspace @aquaflow/auth",
     "test": "vitest run --passWithNoTests",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

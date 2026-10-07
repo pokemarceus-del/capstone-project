@@ -26,6 +26,7 @@ const start = async (): Promise<void> => {
     },
     config.logLevel,
     openApiDocument,
+    config.jwt,
   );
   app.addHook('onClose', async () => prisma.$disconnect());
   await app.listen({ port: config.port, host: '0.0.0.0' });

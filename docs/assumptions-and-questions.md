@@ -14,8 +14,20 @@ that remain unresolved. Do not silently turn an open question into a production 
 - Each backend service owns its data store; services must not read another service's tables.
 - HTTP is the initial synchronous request/response integration mechanism; RabbitMQ with an
   outbox/inbox pattern is the intended asynchronous mechanism.
-- The present in-memory stores are scaffolding only. Production-like behavior requires durable
-  persistence and safe migrations before relying on restart, concurrency, or multiple replicas.
+- Auth and Customer now use service-owned PostgreSQL databases; remaining in-memory stores are
+  scaffolding only. Production-like behavior requires durable persistence and safe migrations
+  before relying on restart, concurrency, or multiple replicas.
+
+## Resolved decisions
+
+- **2026-10-07 — customer self-registration verification (user decision):** An Admin issues a
+  24-hour, single-use invitation for an active, existing Customer Service customer. Auth verifies
+  the customer record and loads all associated accounts through the Admin-authorized Customer API.
+  Staff must verify the person's identity through their existing process and deliver the
+  invitation out of band to the contact already on file; redeeming it proves access to that
+  contact, creates a verified Customer identity, and links the accounts atomically. Only the
+  invitation-token hash is persisted. Email delivery remains deferred to the planned M7 messaging
+  work; this decision does not authorize signup using user-supplied account details alone.
 
 ## Questions to resolve before the affected feature is treated as complete
 
@@ -31,11 +43,10 @@ that remain unresolved. Do not silently turn an open question into a production 
    readings captured on different dates?
 7. What is the route assignment source of truth, and how are reassignment and overlapping route
    periods handled?
-8. Which customer/account verification process authorizes customer self-registration?
-9. What tariff values apply to Commercial, Industrial, and Government classifications? The plan
+8. What tariff values apply to Commercial, Industrial, and Government classifications? The plan
    says these values must be configurable rather than invented in code.
-10. Which event delivery guarantees and retry/DLQ limits should be configured per event type?
-11. Which development environment and cluster tooling will be used for Docker, kind, Helm, and
+9. Which event delivery guarantees and retry/DLQ limits should be configured per event type?
+10. Which development environment and cluster tooling will be used for Docker, kind, Helm, and
     kubectl validation?
 
 ## Decisions policy

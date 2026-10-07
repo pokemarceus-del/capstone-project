@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/auth-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("AUTH_DATABASE_URL")
+}
+
+enum LoginEventOutcome {
+  SUCCESS
+  FAILURE
+}
+
+enum SecurityAuditOutcome {
+  SUCCESS
+  FAILURE
+  DENIED
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(40)
+  description String   @db.VarChar(200)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id                                    String                           @id @default(uuid()) @db.Uuid
+  email                                 String                           @unique @db.VarChar(320)
+  passwordHash                          String                           @db.VarChar(255)
+  name                                  String                           @db.VarChar(200)
+  emailVerifiedAt                       DateTime?                        @db.Timestamptz(6)
+  roleId                                String                           @db.Uuid
+  createdAt                             DateTime                         @default(now()) @db.Timestamptz(6)
+  updatedAt                             DateTime                         @updatedAt @db.Timestamptz(6)
+  role                                  Role                             @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  refreshSessions                       RefreshSession[]
+  loginEvents                           LoginEvent[]
+  customerAccountLinks                  CustomerAccountLink[]
+  issuedCustomerRegistrationInvitations CustomerRegistrationInvitation[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+model RefreshSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  familyId  String    @default(uuid()) @db.Uuid
+  tokenHash String    @unique @db.Char(64)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  expiresAt DateTime  @db.Timestamptz(6)
+  revokedAt DateTime? @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([familyId, revokedAt])
+  @@index([revokedAt])
+  @@map("refresh_sessions")
+}
+
+model LoginEvent {
+  id        String            @id @default(uuid()) @db.Uuid
+  userId    String?           @db.Uuid
+  email     String            @db.VarChar(320)
+  outcome   LoginEventOutcome
+  createdAt DateTime          @default(now()) @db.Timestamptz(6)
+  user      User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([email, createdAt])
+  @@map("login_events")
+}
+
+model SecurityAuditEvent {
+  id          String               @id @default(uuid()) @db.Uuid
+  action      String               @db.VarChar(100)
+  outcome     SecurityAuditOutcome
+  actorUserId String?              @db.Uuid
+  targetType  String?              @db.VarChar(60)
+  targetId    String?              @db.VarChar(200)
+  createdAt   DateTime             @default(now()) @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@map("security_audit_events")
+}
+
+model CustomerAccountLink {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  customerId String   @db.Uuid
+  accountId  String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, accountId])
+  @@index([customerId])
+  @@index([accountId])
+  @@map("customer_account_links")
+}
+
+model CustomerRegistrationInvitation {
+  id              String    @id @default(uuid()) @db.Uuid
+  tokenHash       String    @unique @db.Char(64)
+  email           String    @db.VarChar(320)
+  name            String    @db.VarChar(200)
+  customerId      String    @db.Uuid
+  accountIds      String[]  @db.Uuid
+  createdByUserId String    @db.Uuid
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  expiresAt       DateTime  @db.Timestamptz(6)
+  redeemedAt      DateTime? @db.Timestamptz(6)
+  createdBy       User      @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([email, expiresAt])
+  @@index([customerId])
+  @@map("customer_registration_invitations")
+}

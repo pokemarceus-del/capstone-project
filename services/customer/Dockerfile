@@ -1,5 +1,6 @@
 FROM node:20-alpine
 WORKDIR /app/services/customer
+COPY packages/authentication /app/packages/authentication
 COPY tsconfig.base.json /app/tsconfig.base.json
 COPY services/customer/package.json ./package.json
 COPY services/customer/tsconfig.json ./tsconfig.json

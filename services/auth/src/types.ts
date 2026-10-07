@@ -7,13 +7,23 @@ export interface User {
   role: RoleName;
   name: string;
   createdAt: string;
+  emailVerifiedAt: string | null;
 }
 
 export interface RefreshSession {
   id: string;
   userId: string;
+  familyId: string;
   tokenHash: string;
   createdAt: string;
   expiresAt: string;
   revokedAt?: string | null;
+}
+
+export interface LoginEvent {
+  id: string;
+  userId: string | null;
+  email: string;
+  outcome: 'SUCCESS' | 'FAILURE';
+  createdAt: string;
 }

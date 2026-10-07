@@ -95,12 +95,18 @@ app.get('/api/v1/accounts/:id/meters', async (request, reply) =>
 app.get('/api/v1/meters', async (request, reply) => proxy(CUSTOMER_URL, request, reply));
 app.post('/api/v1/meters/install', async (request, reply) => proxy(CUSTOMER_URL, request, reply));
 app.post('/api/v1/meters/replace', async (request, reply) => proxy(CUSTOMER_URL, request, reply));
+app.get('/api/v1/info', async (request, reply) => proxy(CUSTOMER_URL, request, reply));
 
 app.post('/api/v1/login', async (request, reply) => proxy(AUTH_URL, request, reply));
+app.post('/api/v1/logout', async (request, reply) => proxy(AUTH_URL, request, reply));
 app.get('/api/v1/me', async (request, reply) => proxy(AUTH_URL, request, reply));
 app.post('/api/v1/refresh', async (request, reply) => proxy(AUTH_URL, request, reply));
+app.get('/.well-known/jwks.json', async (request, reply) => proxy(AUTH_URL, request, reply));
 app.get('/api/v1/users', async (request, reply) => proxy(AUTH_URL, request, reply));
+app.get('/api/v1/audit-events', async (request, reply) => proxy(AUTH_URL, request, reply));
 app.post('/api/v1/users', async (request, reply) => proxy(AUTH_URL, request, reply));
+app.post('/api/v1/register', async (request, reply) => proxy(AUTH_URL, request, reply));
+app.post('/api/v1/customer-invitations', async (request, reply) => proxy(AUTH_URL, request, reply));
 
 const start = async () => {
   const port = Number(process.env.PORT ?? 8080);

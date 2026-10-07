@@ -3,7 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
+import { customerRouteMethods, publicCustomerRoutes } from '../src/permissions.js';
 import { CustomerStore } from '../src/store.js';
+import { jwtConfig, tokenForRole } from './jwt-fixture.js';
 
 const integrationDatabaseUrl = process.env.CUSTOMER_INTEGRATION_DATABASE_URL;
 
@@ -130,6 +132,7 @@ integrationDescribe('Customer Service PostgreSQL integration', () => {
       },
       'silent',
       openApiDocument,
+      jwtConfig,
     );
 
     const readiness = await app.inject({
@@ -152,6 +155,99 @@ integrationDescribe('Customer Service PostgreSQL integration', () => {
     expect(openApi.json().paths['/api/v1/accounts/{id}/meters']).toBeDefined();
   });
 
+  it('authenticates Customer Service routes and enforces the role permission matrix', async () => {
+    const app = createApp(store, async () => {}, 'silent', {}, jwtConfig);
+    const customerCollection = '/api/v1/customers';
+    const unauthenticated = await app.inject({ method: 'GET', url: customerCollection });
+    const invalidToken = await app.inject({
+      method: 'GET',
+      url: customerCollection,
+      headers: { authorization: 'Bearer not-a-valid-token' },
+    });
+    const billingRead = await app.inject({
+      method: 'GET',
+      url: customerCollection,
+      headers: { authorization: `Bearer ${tokenForRole('billing_officer')}` },
+    });
+    const billingWrite = await app.inject({
+      method: 'POST',
+      url: customerCollection,
+      headers: { authorization: `Bearer ${tokenForRole('billing_officer')}` },
+      payload: {},
+    });
+    const adminWrite = await app.inject({
+      method: 'POST',
+      url: customerCollection,
+      headers: { authorization: `Bearer ${tokenForRole('admin')}` },
+      payload: {},
+    });
+    const readerRead = await app.inject({
+      method: 'GET',
+      url: customerCollection,
+      headers: { authorization: `Bearer ${tokenForRole('meter_reader')}` },
+    });
+    const customerRead = await app.inject({
+      method: 'GET',
+      url: customerCollection,
+      headers: { authorization: `Bearer ${tokenForRole('customer')}` },
+    });
+    const health = await app.inject({ method: 'GET', url: '/healthz' });
+    const openApi = await app.inject({ method: 'GET', url: '/openapi.json' });
+    await app.close();
+
+    expect(unauthenticated.statusCode).toBe(401);
+    expect(unauthenticated.json().error.code).toBe('UNAUTHENTICATED');
+    expect(invalidToken.statusCode).toBe(401);
+    expect(invalidToken.json().error.code).toBe('INVALID_TOKEN');
+    expect(billingRead.statusCode).toBe(200);
+    expect(billingWrite.statusCode).toBe(403);
+    expect(billingWrite.json().error.code).toBe('INSUFFICIENT_PERMISSIONS');
+    expect(adminWrite.statusCode).toBe(400);
+    expect(readerRead.statusCode).toBe(403);
+    expect(customerRead.statusCode).toBe(403);
+    expect(health.statusCode).toBe(200);
+    expect(openApi.statusCode).toBe(200);
+  });
+
+  it('checks every Customer API method against every role at the HTTP boundary', async () => {
+    const app = createApp(store, async () => {}, 'silent', {}, jwtConfig);
+    const roles = ['admin', 'billing_officer', 'customer', 'meter_reader'] as const;
+    const methods = ['GET', 'POST', 'PATCH'] as const;
+    const deniedStatuses = new Set([401, 403]);
+
+    for (const [routeTemplate, routeMethods] of Object.entries(customerRouteMethods)) {
+      const url = routeTemplate.replace(':id', 'not-a-uuid');
+      for (const method of methods.filter((candidate) => routeMethods.includes(candidate))) {
+        const payload = method === 'POST' || method === 'PATCH' ? {} : undefined;
+        const anonymous = await app.inject({ method, url, payload });
+        expect(anonymous.statusCode).toBe(401);
+
+        for (const role of roles) {
+          const response = await app.inject({
+            method,
+            url,
+            headers: { authorization: `Bearer ${tokenForRole(role)}` },
+            payload,
+          });
+          const allowed =
+            role === 'admin' ||
+            (role === 'billing_officer' && method === 'GET' && routeMethods.includes('GET'));
+          if (allowed) {
+            expect(deniedStatuses.has(response.statusCode)).toBe(false);
+          } else {
+            expect(response.statusCode).toBe(403);
+          }
+        }
+      }
+    }
+
+    const publicResponses = await Promise.all(
+      publicCustomerRoutes.map((url) => app.inject({ method: 'GET', url })),
+    );
+    await app.close();
+    expect(publicResponses.map((response) => response.statusCode)).toEqual([200, 200, 200]);
+  });
+
   it('returns 503 with a controlled response when the database readiness check fails', async () => {
     const openApiDocument: unknown = JSON.parse(
       await readFile(new URL('../openapi.json', import.meta.url), 'utf8'),
@@ -163,6 +259,7 @@ integrationDescribe('Customer Service PostgreSQL integration', () => {
       },
       'silent',
       openApiDocument,
+      jwtConfig,
     );
 
     const response = await app.inject({ method: 'GET', url: '/readyz' });

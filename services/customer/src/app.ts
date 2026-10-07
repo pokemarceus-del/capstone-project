@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import {
+  AccessTokenVerificationError,
+  verifyAccessToken,
+  type JwtVerificationConfig,
+} from '@aquaflow/authentication';
 import { CustomerConflictError, CustomerNotFoundError } from './errors.js';
+import { canAccessCustomerRoute, isPublicCustomerRoute } from './permissions.js';
 import { CustomerStore } from './store.js';
 import {
   accountListQuerySchema,
@@ -20,6 +26,7 @@ export function createApp(
   checkDatabase: () => Promise<void>,
   logLevel: LogLevel,
   openApiDocument: unknown,
+  jwtConfig: JwtVerificationConfig,
 ): FastifyInstance {
   const app = fastify({
     logger: {
@@ -34,6 +41,55 @@ export function createApp(
 
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', request.id);
+  });
+
+  app.addHook('onResponse', async (request, reply) => {
+    if (reply.statusCode === 401 || reply.statusCode === 403) {
+      request.log.warn(
+        {
+          event: 'authorization.denied',
+          method: request.method,
+          route: request.routeOptions.url,
+          statusCode: reply.statusCode,
+        },
+        'Customer API authorization denied',
+      );
+    }
+  });
+
+  app.addHook('preHandler', async (request, reply) => {
+    if (isPublicCustomerRoute(request.routeOptions.url)) {
+      return;
+    }
+
+    const authorization = request.headers.authorization;
+    const bearer = authorization?.match(/^Bearer ([^\s]+)$/);
+    if (!bearer) {
+      return reply.code(401).send({
+        error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' },
+      });
+    }
+
+    let claims;
+    try {
+      claims = verifyAccessToken(bearer[1], jwtConfig);
+    } catch (error) {
+      if (!(error instanceof AccessTokenVerificationError)) {
+        throw error;
+      }
+      return reply.code(401).send({
+        error: { code: 'INVALID_TOKEN', message: 'Token verification failed.' },
+      });
+    }
+
+    if (!canAccessCustomerRoute(claims.role, request.method, request.routeOptions.url)) {
+      return reply.code(403).send({
+        error: {
+          code: 'INSUFFICIENT_PERMISSIONS',
+          message: 'You are not allowed to perform this action.',
+        },
+      });
+    }
   });
 
   app.setErrorHandler((error, request, reply) => {

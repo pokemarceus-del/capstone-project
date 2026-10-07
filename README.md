@@ -25,11 +25,14 @@ The repository includes the core AquaFlow capstone structure and initial service
 6. gateway proxy and local compose orchestration
 7. Helm deployment baseline and non-root container hardening
 
-The backend stores are currently in memory; this is a development/capstone foundation, not a
-production-ready deployment. See the [project timeline](docs/project-timeline.md) for completed
-milestones, validation results, limitations, and the recommended resume point.
-See the [implementation roadmap](docs/implementation-roadmap.md) for the supplied plan's milestone
-order, current status, acceptance gates, and next work queue.
+Auth and Customer data use PostgreSQL; other domain services still use in-memory stores. The
+project is a development/capstone foundation, not a production-ready deployment. M1 and M2 items
+1–6 are complete; Checkpoint B is the next plan-ordered gate. See
+the [implementation roadmap](docs/implementation-roadmap.md) for the supplied plan's milestone
+order, current status, acceptance gates, and next work queue; the [project timeline](docs/project-timeline.md)
+and [validation record](docs/validation-record.md) for completed work, test evidence, and known
+limitations. The [security and authorization matrix](docs/security-authorization-matrix.md)
+records the current endpoint policy and audited actions.
 
 ## Quick run
 
@@ -37,6 +40,7 @@ From the repo root:
 
 - npm ci
 - npm run prisma:generate --workspace=@aquaflow/customer
+- npm run prisma:generate --workspace=@aquaflow/auth
 - npm run lint
 - npm run format:check
 - npm run typecheck

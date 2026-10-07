@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config.js';
 import { CustomerConflictError } from '../src/errors.js';
+import { jwtEnvironment } from './jwt-fixture.js';
 import {
   assertCanInstallMeter,
   assertCanReplaceMeter,
@@ -16,13 +17,16 @@ import {
   meterReplacementSchema,
 } from '../src/validation.js';
 
+const loadTestConfig = (environment: NodeJS.ProcessEnv) =>
+  loadConfig({ ...jwtEnvironment, ...environment });
+
 describe('Customer Service configuration', () => {
   it('loads validated defaults and a PostgreSQL connection URL', () => {
     expect(
-      loadConfig({
+      loadTestConfig({
         CUSTOMER_DATABASE_URL: 'postgresql://aquaflow:secret@localhost:5432/customer_db',
       }),
-    ).toEqual({
+    ).toMatchObject({
       port: 3001,
       logLevel: 'info',
       databaseUrl: 'postgresql://aquaflow:secret@localhost:5432/customer_db',
@@ -31,27 +35,27 @@ describe('Customer Service configuration', () => {
   });
 
   it('rejects a missing or non-PostgreSQL connection URL', () => {
-    expect(() => loadConfig({})).toThrow('CUSTOMER_DATABASE_URL');
-    expect(() => loadConfig({ CUSTOMER_DATABASE_URL: 'mysql://localhost/customer_db' })).toThrow(
-      'must use a PostgreSQL connection URL',
-    );
+    expect(() => loadTestConfig({})).toThrow('CUSTOMER_DATABASE_URL');
+    expect(() =>
+      loadTestConfig({ CUSTOMER_DATABASE_URL: 'mysql://localhost/customer_db' }),
+    ).toThrow('must use a PostgreSQL connection URL');
   });
 
   it('rejects invalid port and seed settings', () => {
     expect(() =>
-      loadConfig({
+      loadTestConfig({
         PORT: '70000',
         CUSTOMER_DATABASE_URL: 'postgresql://localhost/customer_db',
       }),
     ).toThrow('PORT');
     expect(() =>
-      loadConfig({
+      loadTestConfig({
         CUSTOMER_DATABASE_URL: 'postgresql://localhost/customer_db',
         CUSTOMER_SEED_DEMO: 'yes',
       }),
     ).toThrow('CUSTOMER_SEED_DEMO');
     expect(() =>
-      loadConfig({
+      loadTestConfig({
         CUSTOMER_DATABASE_URL: 'postgresql://localhost/customer_db',
         LOG_LEVEL: 'verbose',
       }),
@@ -60,7 +64,7 @@ describe('Customer Service configuration', () => {
 
   it('accepts a configured structured logging level', () => {
     expect(
-      loadConfig({
+      loadTestConfig({
         CUSTOMER_DATABASE_URL: 'postgresql://localhost/customer_db',
         LOG_LEVEL: 'debug',
       }).logLevel,

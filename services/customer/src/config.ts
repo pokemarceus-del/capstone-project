@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { loadJwtVerificationConfig } from '@aquaflow/authentication';
 
 const configSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
@@ -14,6 +15,8 @@ const configSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  JWT_ISSUER: z.string().min(1).default('aquaflow'),
+  JWT_PUBLIC_KEYS_JSON: z.string().min(1),
 });
 
 export interface CustomerServiceConfig {
@@ -21,6 +24,7 @@ export interface CustomerServiceConfig {
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
   databaseUrl: string;
   seedDemoData: boolean;
+  jwt: ReturnType<typeof loadJwtVerificationConfig>;
 }
 
 export function loadConfig(environment: NodeJS.ProcessEnv = process.env): CustomerServiceConfig {
@@ -37,5 +41,6 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): Custom
     logLevel: result.data.LOG_LEVEL,
     databaseUrl: result.data.CUSTOMER_DATABASE_URL,
     seedDemoData: result.data.CUSTOMER_SEED_DEMO,
+    jwt: loadJwtVerificationConfig(result.data.JWT_ISSUER, result.data.JWT_PUBLIC_KEYS_JSON),
   };
 }

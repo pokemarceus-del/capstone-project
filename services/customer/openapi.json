@@ -6,6 +6,7 @@
     "description": "Customer, service account, and meter installation management."
   },
   "servers": [{ "url": "/" }],
+  "security": [{ "BearerAuth": [] }],
   "tags": [
     { "name": "Customers" },
     { "name": "Accounts" },
@@ -17,6 +18,7 @@
       "get": {
         "tags": ["Operations"],
         "summary": "Liveness probe",
+        "security": [],
         "responses": {
           "200": {
             "description": "The service process is alive.",
@@ -41,6 +43,7 @@
       "get": {
         "tags": ["Operations"],
         "summary": "Dependency-aware readiness probe",
+        "security": [],
         "responses": {
           "200": {
             "description": "The service and its database are ready.",
@@ -309,6 +312,13 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
     "parameters": {
       "Search": {
         "name": "q",

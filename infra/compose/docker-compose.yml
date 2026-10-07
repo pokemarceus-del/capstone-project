@@ -16,6 +16,23 @@ services:
       timeout: 3s
       retries: 10
 
+  auth-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    expose:
+      - '5432'
+    environment:
+      POSTGRES_USER: ${AUTH_POSTGRES_USER:-aquaflow_auth}
+      POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD:?Set AUTH_POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${AUTH_POSTGRES_DB:-auth_db}
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   customer:
     build:
       context: ../..
@@ -27,6 +44,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       CUSTOMER_DATABASE_URL: ${CUSTOMER_DATABASE_URL:?Set CUSTOMER_DATABASE_URL in .env}
       CUSTOMER_SEED_DEMO: ${CUSTOMER_SEED_DEMO:-true}
+      JWT_ISSUER: ${JWT_ISSUER:-aquaflow}
+      JWT_PUBLIC_KEYS_JSON: ${JWT_PUBLIC_KEYS_JSON:?Set JWT_PUBLIC_KEYS_JSON in .env}
     healthcheck:
       test:
         [
@@ -51,11 +70,37 @@ services:
       - '3002'
     environment:
       PORT: 3002
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       JWT_ISSUER: aquaflow
-      NODE_ENV: production
+      JWT_ACTIVE_KID: ${JWT_ACTIVE_KID:?Set JWT_ACTIVE_KID in .env}
+      JWT_PRIVATE_KEY_B64: ${JWT_PRIVATE_KEY_B64:?Set JWT_PRIVATE_KEY_B64 in .env}
+      JWT_PUBLIC_KEYS_JSON: ${JWT_PUBLIC_KEYS_JSON:?Set JWT_PUBLIC_KEYS_JSON in .env}
+      NODE_ENV: ${AUTH_NODE_ENV:-development}
+      AUTH_DATABASE_URL: ${AUTH_DATABASE_URL:?Set AUTH_DATABASE_URL in .env}
       AUTH_SEED_ADMIN_EMAIL: ${AUTH_SEED_ADMIN_EMAIL:-}
       AUTH_SEED_ADMIN_PASSWORD: ${AUTH_SEED_ADMIN_PASSWORD:-}
+      AUTH_SEED_LOCAL_IDENTITIES: ${AUTH_SEED_LOCAL_IDENTITIES:-false}
+      AUTH_SEED_BILLING_OFFICER_EMAIL: ${AUTH_SEED_BILLING_OFFICER_EMAIL:-}
+      AUTH_SEED_BILLING_OFFICER_PASSWORD: ${AUTH_SEED_BILLING_OFFICER_PASSWORD:-}
+      AUTH_SEED_METER_READER_EMAIL: ${AUTH_SEED_METER_READER_EMAIL:-}
+      AUTH_SEED_METER_READER_PASSWORD: ${AUTH_SEED_METER_READER_PASSWORD:-}
+      AUTH_SEED_CUSTOMER_EMAIL: ${AUTH_SEED_CUSTOMER_EMAIL:-}
+      AUTH_SEED_CUSTOMER_PASSWORD: ${AUTH_SEED_CUSTOMER_PASSWORD:-}
+      CUSTOMER_SERVICE_URL: http://customer:3001
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3002/readyz').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
 
   reading:
     build:
@@ -107,7 +152,7 @@ services:
       customer:
         condition: service_healthy
       auth:
-        condition: service_started
+        condition: service_healthy
 
   web:
     build:
@@ -125,3 +170,4 @@ services:
 
 volumes:
   customer_postgres_data:
+  auth_postgres_data:

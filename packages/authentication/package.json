@@ -1,0 +1,14 @@
+{
+  "name": "@aquaflow/authentication",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/jwt.js",
+  "types": "./src/jwt.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/jwt.d.ts",
+      "import": "./src/jwt.js"
+    }
+  }
+}

@@ -70,31 +70,88 @@ over the Compose network.
 
 Run from the project root:
 
-```bash
+```powershell
 Copy-Item .env.example .env
-# Replace POSTGRES_PASSWORD and update its password in CUSTOMER_DATABASE_URL.
-# Set JWT_SECRET in .env to a random value of at least 32 bytes.
-# Optionally set AUTH_SEED_ADMIN_EMAIL and AUTH_SEED_ADMIN_PASSWORD to create a local admin.
+# Set both database passwords and update the matching connection URLs.
+# Generate local RS256 keys; copy the three JWT_* values from .env.jwt-keys into .env.
+npm run generate:jwt-keys --workspace @aquaflow/auth
+# Optional: set AUTH_SEED_ADMIN_EMAIL and AUTH_SEED_ADMIN_PASSWORD to create a local Admin.
+# To seed one local identity for every role, set AUTH_SEED_LOCAL_IDENTITIES=true and provide
+# distinct, at-least-16-character passwords and unique emails for all four roles in .env.
+# This setting is rejected outside AUTH_NODE_ENV=development or test.
 docker compose -f infra/compose/docker-compose.yml up --build
 ```
 
-Compose starts PostgreSQL 16 with a health check and a named `customer_postgres_data` volume.
-PostgreSQL is not published to the host; the Customer Service receives its internal connection URL
-through `CUSTOMER_DATABASE_URL`. The Customer Service image generates the Prisma client during
-build and applies versioned migrations with `prisma migrate deploy` before starting. Set
+The key generator writes `.env.jwt-keys` at the project root and refuses to overwrite it. This file
+contains private key material: do not commit or share it. Use a secret manager for deployed
+environments. To prepare a new key pair without replacing the current local file, run
+`npm run generate:jwt-keys --workspace @aquaflow/auth -- .env.jwt-keys.next`. For rotation, first
+publish the new public JWK alongside the old JWK while leaving the old key active. After all
+verifiers receive both keys, switch the signer to the new key ID and private key. Keep the old
+public JWK published for at least the 15-minute access-token lifetime plus deployment skew, then
+remove it. Logout revokes the supplied persisted refresh token; already issued stateless access
+tokens remain valid until their 15-minute expiry.
+
+When reusing an initialized Customer database volume, keep `POSTGRES_PASSWORD` and the password in
+`CUSTOMER_DATABASE_URL` equal to the credentials used when that volume was created. Changing the
+environment value alone does not change the stored PostgreSQL role password.
+
+Compose starts separate PostgreSQL 16 databases for Customer and Auth, each with a health check and
+its own named data volume. Neither database is published to the host. Customer and Auth receive
+their internal connection URLs through `CUSTOMER_DATABASE_URL` and `AUTH_DATABASE_URL`. Both
+service images generate their Prisma clients during build and apply versioned migrations before
+starting. Set
 `CUSTOMER_SEED_DEMO=false` to skip the optional deterministic development dataset (3 zones,
 60 customers, 75 accounts, and 80 meters). Keep the volume to retain local database data;
 `docker compose down -v` deletes it.
-The Customer Service readiness probe checks PostgreSQL; Compose waits for it before starting the
-Gateway. The Customer Service exposes `/healthz`, `/readyz`, and the OpenAPI document at
+The Customer and Auth readiness probes check their respective PostgreSQL databases; Compose waits
+for both before starting the Gateway. Auth stores users, seeded role records, refresh-session
+digests, login events, and customer-account links in its own database. No administrator is created
+unless both optional seed credentials are configured. Auth integration tests require a separate
+database ending in `_test`, configured through `AUTH_INTEGRATION_DATABASE_URL`; the dedicated test
+command applies its migration before running tests:
+
+```powershell
+$env:AUTH_INTEGRATION_DATABASE_URL = "postgresql://<user>:<password>@localhost:5432/auth_db_test?schema=public"
+npm run test:integration --workspace @aquaflow/auth
+```
+
+Customer Service receives only `JWT_ISSUER` and `JWT_PUBLIC_KEYS_JSON`; it never receives the
+Auth signing private key. Its customer/account/meter API routes require a valid RS256 bearer token.
+The temporary M2 permission policy grants Admin full access and Billing Officer read-only access;
+Customer and Meter Reader roles are denied until ownership and reader-assignment scoping are
+implemented. `/healthz`, `/readyz`, and `/openapi.json` remain public operational endpoints.
+
+For M2 customer registration, use the Admin identity to call
+`POST /api/v1/customer-invitations` through the Gateway with `{ "customerId": "<existing UUID>" }`.
+Auth confirms that the customer is active and retrieves every linked service account using the
+Admin bearer token. The response includes the existing contact email and one 24-hour invitation
+token, shown only once. Staff must verify the person's identity through their existing process and
+deliver the token out of band to that existing contact. The public
+`POST /api/v1/register` endpoint accepts that token and a password of at least 12 characters.
+Successful redemption atomically marks the email verified, creates a Customer-role login, links
+all of the customer's accounts, and consumes all pending invitations for that email. Only the
+token hash is stored. The invitation is not sent by email in M2; outbound delivery is deferred to
+the plan's M7 messaging work. Auth's `/api/v1/users` listing and staff-creation routes require an
+Admin bearer token, and that route cannot create Customer identities directly.
+
+Auth refresh tokens rotate on use and are grouped into families: reuse of a revoked token revokes
+the remaining active tokens in that family. Login is blocked after five consecutive failures for a
+normalized email within a rolling 15-minute window; successful login resets the consecutive-failure
+count. See the [validation record](./validation-record.md) for exercised unit, integration, Compose,
+and Gateway checks. The complete currently verified role matrix and known unrun gates are also
+recorded there.
+
+The Auth Service owns role and login/session rows. Customer and account IDs in its link table are
+references to Customer Service-owned records and intentionally have no cross-database foreign keys.
+The Customer Service exposes `/healthz`, `/readyz`, and the OpenAPI document at
 `/openapi.json`. Structured request logging defaults to `LOG_LEVEL=info`; authorization and cookie
 headers are redacted.
 
 This starts the service stack and exposes the web app and gateway. The gateway serves as the
 integration point for the domain services. Customer Service data is persisted in PostgreSQL.
-No administrator is created unless both optional seed credentials are configured. Use local,
-non-production credentials and keep `.env` out of source control; the web app uses the same values
-for its optional demo login.
+Use local, non-production seed credentials and keep `.env` out of source control; the web app uses
+the same values for its optional demo login.
 
 ## Notes
 

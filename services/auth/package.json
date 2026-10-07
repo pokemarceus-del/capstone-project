@@ -2,11 +2,21 @@
   "version": "0.1.0",
   "name": "@aquaflow/auth",
   "scripts": {
+    "pretest": "npm run prisma:generate",
+    "pretest:integration": "npm run prisma:generate",
+    "prebuild": "npm run prisma:generate",
+    "pretypecheck": "npm run prisma:generate",
+    "predev": "npm run prisma:generate",
     "test": "vitest run",
+    "test:integration": "node scripts/test-integration.mjs",
+    "generate:jwt-keys": "node scripts/generate-jwt-keypair.mjs",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js"
+    "start": "prisma migrate deploy --schema prisma/schema.prisma && node dist/index.js",
+    "prisma:validate": "prisma validate --schema prisma/schema.prisma",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma"
   },
   "devDependencies": {
     "@types/node": "^20.14.12",
@@ -16,10 +26,13 @@
   },
   "type": "module",
   "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "@aquaflow/authentication": "file:../../packages/authentication",
     "@types/jsonwebtoken": "^9.0.10",
     "argon2": "^0.45.1",
     "fastify": "^5.0.0",
     "jsonwebtoken": "^9.0.3",
+    "prisma": "^6.19.0",
     "zod": "^3.23.8"
   },
   "private": true

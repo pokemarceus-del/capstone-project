@@ -30,3 +30,13 @@ After `npm ci`, Prisma Client generation is wired into the Customer Service's te
 test, build, typecheck, and development commands. The root unit-test command also generates it
 before running tests. `.gitattributes` keeps text files on LF line endings across platforms so
 Prettier checks behave consistently on Windows and Unix.
+
+M2 items 1–6 are implemented in the current uncommitted worktree. Auth and Customer share the
+RS256/JWKS verifier; Customer route permissions follow the interim policy recorded in
+`implementation-roadmap.md`. Customer registration uses the Admin-issued, single-use invitation
+decision recorded in `assumptions-and-questions.md`. Durable Auth security audit events and the
+complete role-by-endpoint tests are recorded in `security-authorization-matrix.md`. The next
+plan-ordered gate is Checkpoint B; do not proceed into M3 before it is approved. The current
+milestone, detailed project timeline, and consolidated validation evidence are kept in
+`implementation-roadmap.md`, `project-timeline.md`, `development-journal.md`, and
+`validation-record.md`. Do not commit `.env.jwt-keys`, `.env`, or any private signing key.
