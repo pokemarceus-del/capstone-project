@@ -33,6 +33,18 @@ services:
       timeout: 3s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    expose:
+      - '6379'
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   customer:
     build:
       context: ../..
@@ -148,10 +160,21 @@ services:
       PORT: 8080
       CUSTOMER_URL: http://customer:3001
       AUTH_URL: http://auth:3002
+      READING_URL: http://reading:3003
+      BILLING_URL: http://billing:3004
+      PAYMENT_URL: http://payment:3005
+      NOTIFICATION_URL: http://notification:3006
+      JWT_ISSUER: ${JWT_ISSUER:-aquaflow}
+      JWT_PUBLIC_KEYS_JSON: ${JWT_PUBLIC_KEYS_JSON:?Set JWT_PUBLIC_KEYS_JSON in .env}
+      REDIS_URL: redis://redis:6379
+      RATE_LIMIT_MAX: 120
+      RATE_LIMIT_WINDOW_MS: 60000
     depends_on:
       customer:
         condition: service_healthy
       auth:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   web:

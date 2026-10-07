@@ -27,7 +27,12 @@ The repository includes the core AquaFlow capstone structure and initial service
 
 Auth and Customer data use PostgreSQL; other domain services still use in-memory stores. The
 project is a development/capstone foundation, not a production-ready deployment. M1 and M2 items
-1–6 are complete; Checkpoint B is the next plan-ordered gate. See
+1–6 are complete, and Checkpoint B was approved on 2026-10-07. M3 items 1–2 are implemented:
+Gateway routes, JWT pre-check, request/correlation IDs, controlled errors, CORS, timeouts,
+Redis-backed distributed rate limiting, and Redis health-aware Compose startup. All eight M3 images
+also build; an isolated smoke test passed for Gateway, Redis, four stateless services, and Web.
+Complete M3 item 3 by exercising the full Compose stack once user-managed `.env` settings are
+available. See
 the [implementation roadmap](docs/implementation-roadmap.md) for the supplied plan's milestone
 order, current status, acceptance gates, and next work queue; the [project timeline](docs/project-timeline.md)
 and [validation record](docs/validation-record.md) for completed work, test evidence, and known

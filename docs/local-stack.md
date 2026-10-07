@@ -66,6 +66,23 @@ Open `http://localhost:3000`. The web server calls the in-cluster gateway using 
 Compose publishes only the web app and gateway to the host. Backend services are reachable only
 over the Compose network.
 
+When another AquaFlow Compose project is already using host ports 3000 or 8080, keep that project
+and its volumes untouched. Use one-off M3 Gateway/Web containers with alternate host ports while
+retaining the Compose network aliases used by the Web app:
+
+```powershell
+docker compose --env-file .env -p aquaflow-m3-validation -f infra/compose/docker-compose.yml run `
+  -d --no-deps --use-aliases --name aquaflow-m3-validation-gateway-alt `
+  -p 127.0.0.1:18080:8080 gateway
+docker compose --env-file .env -p aquaflow-m3-validation -f infra/compose/docker-compose.yml run `
+  -d --no-deps --use-aliases --name aquaflow-m3-validation-web-alt `
+  -p 127.0.0.1:13000:3000 web
+```
+
+This lets Web reach Gateway at `http://gateway:8080` within the isolated Compose network while
+exposing the M3 smoke-test instances at `http://localhost:13000` and `http://localhost:18080`.
+The default Compose port mappings remain unchanged.
+
 ## Docker Compose
 
 Run from the project root:
@@ -82,6 +99,31 @@ npm run generate:jwt-keys --workspace @aquaflow/auth
 docker compose -f infra/compose/docker-compose.yml up --build
 ```
 
+The root workflow scripts are:
+
+```powershell
+npm run dev
+npm run dev:ps
+npm test
+npm run health
+```
+
+`npm run dev` builds and starts the stack as the separate `aquaflow-dev` Compose project; it
+publishes Web on port 3000 and Gateway on 8080. Do not start it while another project owns those
+ports. `npm run dev:down` stops that project without deleting its named volumes. `npm test` runs
+the root Vitest suite, including Gateway and health-check tests. `npm run health` checks the
+default public endpoints (`http://localhost:8080/healthz` and `http://localhost:3000/`). Override
+them when using alternate ports without changing source:
+
+```powershell
+$env:GATEWAY_HEALTH_URL = "http://localhost:18080/healthz"
+$env:WEB_HEALTH_URL = "http://localhost:13000/"
+npm run health
+```
+
+The health command reports each endpoint's HTTP status or connection failure and returns a
+non-zero exit code if either endpoint is unavailable or non-successful.
+
 The key generator writes `.env.jwt-keys` at the project root and refuses to overwrite it. This file
 contains private key material: do not commit or share it. Use a secret manager for deployed
 environments. To prepare a new key pair without replacing the current local file, run
@@ -97,7 +139,9 @@ When reusing an initialized Customer database volume, keep `POSTGRES_PASSWORD` a
 environment value alone does not change the stored PostgreSQL role password.
 
 Compose starts separate PostgreSQL 16 databases for Customer and Auth, each with a health check and
-its own named data volume. Neither database is published to the host. Customer and Auth receive
+its own named data volume. Redis 7 provides the Gateway's shared rate-limit store and is health
+checked before Gateway starts; Redis is not published to the host and rate-limit counters are
+intentionally ephemeral. Neither database is published to the host. Customer and Auth receive
 their internal connection URLs through `CUSTOMER_DATABASE_URL` and `AUTH_DATABASE_URL`. Both
 service images generate their Prisma clients during build and apply versioned migrations before
 starting. Set
@@ -105,7 +149,11 @@ starting. Set
 60 customers, 75 accounts, and 80 meters). Keep the volume to retain local database data;
 `docker compose down -v` deletes it.
 The Customer and Auth readiness probes check their respective PostgreSQL databases; Compose waits
-for both before starting the Gateway. Auth stores users, seeded role records, refresh-session
+for both databases before starting those services, and then waits for healthy Customer, Auth, and
+Redis dependencies before starting the Gateway. Customer and Auth apply their own Prisma migrations
+as part of container startup after their database health checks pass. A Gateway without
+`REDIS_URL` uses an in-process limiter for isolated development/tests; Compose always configures
+Redis so limits are shared between Gateway instances. Auth stores users, seeded role records, refresh-session
 digests, login events, and customer-account links in its own database. No administrator is created
 unless both optional seed credentials are configured. Auth integration tests require a separate
 database ending in `_test`, configured through `AUTH_INTEGRATION_DATABASE_URL`; the dedicated test

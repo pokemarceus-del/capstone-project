@@ -88,10 +88,10 @@ implementation decisions and iterations in [development-journal.md](./developmen
 Audit action names, route access rules, sensitive-field exclusions, and known retention/logging
 limits are listed in [security-authorization-matrix.md](./security-authorization-matrix.md).
 
-## Checkpoint B readiness review — pending user approval
+## Checkpoint B review — approved by user on 2026-10-07
 
 The roadmap places Checkpoint B after M2 items 1–6. The M2 implementation and evidence are
-documented, but this checkpoint is **not recorded as passed** until the user approves it.
+documented. The user approved Checkpoint B after commit `1e4763f`; M3 work is now authorized.
 
 | Checkpoint area                                               | Readiness                               | Evidence and qualification                                                                                                                                                    |
 | ------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -101,11 +101,50 @@ documented, but this checkpoint is **not recorded as passed** until the user app
 | Verified registration and local identities                    | Complete                                | Admin-issued one-time invitation flow, verified Customer registration, account links, and explicit local identity safeguards passed tests and the earlier Compose smoke flow. |
 | Security events and endpoint matrix                           | Complete in focused tests               | M2 item 6 passed 34 root unit tests, 10 Auth PostgreSQL tests, 8 Customer PostgreSQL tests, static checks/builds, and the isolated Gateway proxy smoke.                       |
 | Current runtime state                                         | Known limitation                        | The Compose-connected Gateway/Auth stack was not rebuilt or smoke-tested for item 6 because required local `.env` values are absent.                                          |
-| Checkpoint decision                                           | Pending                                 | This is a review package only; no checkpoint pass or M3 work has been recorded.                                                                                               |
+| Checkpoint decision                                           | Passed                                  | User approved Checkpoint B on 2026-10-07 after reviewing the documented M2 evidence.                                                                                          |
 
 Audit-event retention and centralized log export are not configured; the Customer Service's 401/403
 authorization events are structured logs rather than rows in the Auth audit table. These are
 documented limitations, not silently assumed capabilities.
+
+## M3 items 1–2 — Gateway routes, authorization, resilience, and Redis rate limiting
+
+| Check                         | Result                                        | Evidence / qualification                                                                                                                                                                                                                                      |
+| ----------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gateway focused tests         | Passed: 8 tests, including Redis-backed test. | Covers JWT rejection/acceptance, production Redis configuration, public login, query/path forwarding, request/correlation ID forwarding, CORS preflight, controlled 503/504 responses, local rate limiting, and shared limiting across two Gateway instances. |
+| Redis shared-limit validation | Passed against an isolated Redis 7 container. | Two independently created Gateway instances used the same Redis and client IP; the first health request returned 200 and the second returned 429. The temporary test container was stopped after validation.                                                  |
+| Gateway build/typecheck       | Passed.                                       | `npm run build --workspace services/gateway` and `npm run typecheck --workspace services/gateway`.                                                                                                                                                            |
+| Root unit suite               | Passed: 42 tests; 18 skipped.                 | Run with `GATEWAY_TEST_REDIS_URL` set, so the Redis integration case ran; PostgreSQL-dependent integration cases remain skipped by the default root command.                                                                                                  |
+| Lint/format/Compose syntax    | Passed.                                       | Workspace ESLint/typechecks and Prettier checks passed; `docker compose config --no-interpolate --quiet` validated syntax without expanding local settings.                                                                                                   |
+
+The Gateway forwards current Customer, Auth, Reading, Billing, Payment, and Notification routes.
+Protected routes verify RS256 access tokens with the shared Auth verifier; login, refresh,
+registration, JWKS, and operational health/status routes remain public. Compose configures the
+Redis-backed rate limiter and waits for Redis health. Without `REDIS_URL`, isolated Gateway
+development/tests use the plugin's in-process store; production refuses to start without
+`REDIS_URL`.
+
+## M3 item 3 — Docker images and runtime smoke
+
+| Check                            | Result                                                          | Evidence / qualification                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Docker image builds              | Passed for all 8 images.                                        | Built fresh `m3-local` tags for Auth, Customer, Reading, Billing, Payment, Notification, Gateway, and Web from the repository root.                                                                                                                                                                                                                                                      |
+| Isolated runtime smoke           | Passed for 7 components.                                        | Redis and Gateway started together; Reading, Billing, Payment, and Notification health endpoints returned success; Web returned HTTP 200; Gateway `/healthz` returned success and a protected Reading route returned HTTP 401. All test containers and their network were removed afterward.                                                                                             |
+| Isolated Compose startup         | Core services healthy; default Gateway/Web host ports conflict. | Corrected both local database URL passwords; the URLs now match their Compose Postgres credentials. Both PostgreSQL containers, Redis, Auth, and Customer report healthy; Reading, Billing, Payment, and Notification are running. The existing M2 project owns host ports 3000 and 8080, so Compose's standard Gateway/Web containers remain Created when their fixed bindings collide. |
+| Alternate-port Gateway/Web smoke | Passed.                                                         | Started M3 one-off containers with Compose service aliases on 18080 (Gateway) and 13000 (Web), without stopping or changing the prior M2 project. Gateway health returned HTTP 200; Web returned HTTP 200; Web-to-Gateway internal DNS returned HTTP 200; protected Gateway Reading route returned HTTP 401 as expected.                                                                 |
+
+## M3 item 4 — Root scripts and acceptance checks (in progress)
+
+| Check                         | Result                        | Evidence / qualification                                                                                                                                                                                                                                              |
+| ----------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Root dev/test/health commands | Implemented.                  | `npm run dev` uses isolated Compose project `aquaflow-dev`; `npm test` is the root Vitest suite; `npm run health` probes Gateway and Web. `dev:ps` and `dev:down` are also available.                                                                                 |
+| Health-check unit tests       | Passed: 3 tests.              | `npm.cmd exec vitest -- run scripts/healthcheck.test.mjs` validates alternate endpoint URLs, non-success HTTP status, and connection failure handling.                                                                                                                |
+| Root unit suite               | Passed: 44 tests; 19 skipped. | `npm.cmd test` passed. PostgreSQL integration tests requiring separate test databases remain skipped by this default suite.                                                                                                                                           |
+| Live health check             | Passed: Gateway and Web 200.  | `npm.cmd run health` with `GATEWAY_HEALTH_URL=http://localhost:18080/healthz` and `WEB_HEALTH_URL=http://localhost:13000/` checked the active M3 one-off containers.                                                                                                  |
+| Compose config validation     | Passed.                       | `docker compose --env-file .env -p aquaflow-dev -f infra/compose/docker-compose.yml config --quiet` passed without printing local settings.                                                                                                                           |
+| Compose dev startup           | Not run in this environment.  | It would bind host ports 3000/8080, currently owned by the M2 project. Bare Compose commands that omit `--env-file .env` fail required-variable interpolation.                                                                                                        |
+| Clean-clone acceptance        | Pending.                      | The M3 changes remain uncommitted; do not claim an unmodified clone validates these changes. Repeat after an M3 checkpoint commit or in a clean test copy with the change set applied.                                                                                |
+| Controlled 503/504 behavior   | Passed by Gateway test.       | `npm.cmd exec vitest -- run services/gateway/tests/app.test.ts -t 'returns controlled errors for upstream failure and timeout'` passed. The injected upstream failure returns HTTP 503 with `UPSTREAM_UNAVAILABLE`; timeout returns HTTP 504 with `UPSTREAM_TIMEOUT`. |
 
 ## Known unrun checks and environment notes
 
@@ -115,9 +154,12 @@ documented limitations, not silently assumed capabilities.
   `compose_customer_postgres_data` volume.
 - `npm install` reported 28 dependency audit findings (5 moderate, 20 high, 3 critical); no
   automatic audit remediation was run because it could introduce unrelated or breaking changes.
+- Gateway dependency installation reported 7 audit findings (3 moderate, 2 high, 2 critical); no
+  automatic audit remediation was run.
 - The Auth Docker build reported 9 findings in its build dependency tree (3 moderate, 4 high,
   2 critical) and 3 high-severity findings after pruning development dependencies. No automatic
   audit fix was run; review these findings in the separately scoped dependency-security work.
-- M2 items 1–6 changes are uncommitted. No commit was created during these validations.
+- M2 items 1–6 were committed as `1e4763f` (`feat: complete M2 customer authorization and audit`); local key files and other secrets were excluded.
+- Checkpoint B was approved on 2026-10-07; M3 items 1–2 are implemented and item 3's full isolated runtime is exercised. The user-managed database password mismatches are fixed. The pre-existing M2 project still occupies the default host ports; use the documented alternate ports or stop that project only with the user's approval. Remaining M3 acceptance evidence is tracked in `implementation-roadmap.md`.
 - Each milestone's remaining acceptance gate is tracked in `implementation-roadmap.md`; do not
   infer completion of later milestones from these earlier checks.

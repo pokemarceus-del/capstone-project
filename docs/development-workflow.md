@@ -31,12 +31,27 @@ test, build, typecheck, and development commands. The root unit-test command als
 before running tests. `.gitattributes` keeps text files on LF line endings across platforms so
 Prettier checks behave consistently on Windows and Unix.
 
-M2 items 1–6 are implemented in the current uncommitted worktree. Auth and Customer share the
-RS256/JWKS verifier; Customer route permissions follow the interim policy recorded in
-`implementation-roadmap.md`. Customer registration uses the Admin-issued, single-use invitation
-decision recorded in `assumptions-and-questions.md`. Durable Auth security audit events and the
-complete role-by-endpoint tests are recorded in `security-authorization-matrix.md`. The next
-plan-ordered gate is Checkpoint B; do not proceed into M3 before it is approved. The current
-milestone, detailed project timeline, and consolidated validation evidence are kept in
-`implementation-roadmap.md`, `project-timeline.md`, `development-journal.md`, and
-`validation-record.md`. Do not commit `.env.jwt-keys`, `.env`, or any private signing key.
+Root scripts provide the repeatable project entry points: `npm run dev` builds and starts the
+Compose stack under the isolated `aquaflow-dev` project name, `npm test` runs the root Vitest suite,
+and `npm run health` checks the host Gateway and Web endpoints. Use `GATEWAY_HEALTH_URL` and
+`WEB_HEALTH_URL` to target alternate host ports. `npm run dev:down` stops only `aquaflow-dev`
+containers and preserves its named volumes. The Compose stack requires the local settings described
+in `local-stack.md`; never commit `.env` or key material.
+
+M2 items 1–6 are committed at `1e4763f`; Checkpoint B was approved on 2026-10-07. Auth and
+Customer share the RS256/JWKS verifier; Customer route permissions follow the interim policy
+recorded in `implementation-roadmap.md`. Customer registration uses the Admin-issued, single-use
+invitation decision recorded in `assumptions-and-questions.md`. Durable Auth security audit events
+and the complete role-by-endpoint tests are recorded in `security-authorization-matrix.md`. M3
+items 1–2 now include complete current-service Gateway routes, JWT pre-check, request/correlation
+IDs, controlled errors, CORS, timeouts, Redis-backed distributed rate limiting, and health-aware
+Redis Compose startup. M3 item 3 built all eight images and smoke-tested Gateway, Redis, Reading,
+Billing, Payment, Notification, and Web in an isolated network. The M3 validation Compose project
+has healthy PostgreSQL, Redis, Auth, and Customer, with the stateless services running. M3 Gateway
+and Web were exercised on alternate host ports because the pre-existing M2 project still owns
+3000/8080. M3 item 4 is in progress: root Compose-dev and health scripts are implemented and the
+health script has focused tests; clean-clone acceptance evidence is still pending. The Gateway's
+controlled upstream failure responses have focused test coverage. Root Compose scripts explicitly
+load the local `.env` file; bare Compose commands that omit it fail required-variable
+interpolation. Keep `.env`,
+`.env.jwt-keys`, and private signing keys out of commits.

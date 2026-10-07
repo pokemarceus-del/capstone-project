@@ -275,5 +275,53 @@
   so the active prior validation stack was not rebuilt. The built Gateway was smoke-tested against
   a local stub Auth upstream and forwarded the audit route's HTTP 401 as expected; a
   Compose-connected Gateway-to-Auth smoke test remains unrun.
-- M2 item 6 is complete. Checkpoint B is the next plan-ordered gate; do not advance into M3 before
-  that gate is approved. No commit was created.
+- M2 item 6 is complete. The work was committed as `1e4763f` (`feat: complete M2 customer
+authorization and audit`); `.env.jwt-keys` and other local secrets were excluded.
+
+## 2026-10-07 — Checkpoint B approval and M3 items 1–3
+
+- The user approved Checkpoint B after reviewing the documented M2 evidence. The known M2
+  validation limitation remains: the Compose-connected Gateway/Auth stack was not rebuilt for
+  audit-event changes because required local `.env` values were absent.
+- Added the Gateway's explicit Customer, Auth, Reading, Billing, Payment, and Notification routes.
+  Protected routes use the shared RS256/JWKS verifier; public login/refresh/registration/JWKS and
+  operational health/status routes remain available without a token.
+- Added safe request/correlation ID generation and forwarding, shared CORS headers, an upstream
+  timeout with distinct 503/504 responses, and an `@fastify/rate-limit` limiter backed by Redis
+  when configured. The gateway's error handler preserves the limiter's 429 response.
+- Added Redis 7 to Compose with a health check; Compose waits for Redis, Auth, and Customer before
+  starting the Gateway. Documented database migration-before-service startup order.
+- Validation: Gateway tests passed 8/8, including an isolated live Redis test proving two Gateway
+  instances share one rate limit. Gateway build/typecheck, workspace typechecks, ESLint, Prettier,
+  root unit suite (42 passed; 18 database integration tests skipped), and Compose syntax validation
+  passed. All eight fresh Docker images built. In an isolated network, Redis, Gateway, Reading,
+  Billing, Payment, Notification, and Web passed runtime health/API smoke checks. The user then
+  configured `.env` and started isolated Compose project `aquaflow-m3-validation`. Compose syntax
+  and interpolation passed. The initial local check found two database URL password mismatches;
+  the user corrected them without exposing values. Both PostgreSQL containers, Redis, Auth, and
+  Customer now report healthy; Reading, Billing, Payment, and Notification are running.
+- The prior M2 project continues to own host ports 3000 and 8080. The standard M3 Compose Gateway
+  and Web containers therefore cannot bind those ports. Started only M3 one-off Gateway/Web
+  containers with Compose service aliases on alternate host ports 18080 and 13000; Gateway and Web
+  returned HTTP 200, Web reached Gateway over Compose DNS, and Gateway rejected an unauthenticated
+  protected route with HTTP 401 as expected. No existing project or volume was stopped or altered.
+- M3 item 3 runtime is exercised with the documented port qualification; retain clean-clone and
+  controlled dependency-failure acceptance checks for the next plan-ordered M3 item. Do not stop
+  the prior project or change its port ownership without user approval.
+
+## 2026-10-07 — M3 item 4: root workflow and health checks (in progress)
+
+- Added root Compose development commands (`dev`, `dev:ps`, and `dev:down`); the development
+  project is isolated as `aquaflow-dev`. The existing root `test` command remains the primary
+  Vitest entry point, and `health` checks the public Gateway and Web endpoints.
+- Added configurable Gateway/Web health URLs, non-zero failure behavior, and focused tests for
+  successful responses, HTTP failures, and unreachable endpoints. The focused tests passed 3/3.
+- Ran the root health command against M3's alternate ports 18080/13000; both endpoints returned
+  HTTP 200.
+- Verified the Gateway's controlled upstream failure behavior with its focused test: unavailable
+  upstream returned HTTP 503/`UPSTREAM_UNAVAILABLE`, and timeout returned
+  HTTP 504/`UPSTREAM_TIMEOUT`.
+- Clean-clone startup remains open. Compose interpolation currently reports required local
+  settings as unset when a command omits `--env-file .env`; explicit root script Compose config
+  validation passes. The default dev stack would conflict with the earlier project's host ports;
+  neither project or its volumes were changed. No local `.env` or key contents were recorded.

@@ -329,13 +329,13 @@ Detailed M0–M2 test/build/runtime evidence and explicitly skipped checks are s
   performed. The built Gateway was separately smoke-tested against a local stub Auth upstream;
   `GET /api/v1/audit-events` correctly forwarded its HTTP 401. Real Auth behavior was exercised in
   PostgreSQL HTTP integration tests.
-- M2 item 6 is complete. Checkpoint B is the next plan-ordered gate; Customer and Meter Reader
-  permissions remain restricted pending ownership and assignment scoping.
+- M2 item 6 is complete. Customer and Meter Reader permissions remain restricted pending ownership
+  and assignment scoping.
 
 ## Current verified state
 
 - M1's clean-clone acceptance gate passed at commit `94d20b4`.
-- M2 items 1–6 are implemented but not yet committed. Item 1 passed 29 tests including all 10
+- M2 items 1–6 are committed at `1e4763f`. Item 1 passed 29 tests including all 10
   PostgreSQL integration cases; item 2 passed 23 root unit tests and four Auth integration tests;
   item 3 passed 23 root unit tests and seven Auth integration tests; item 4 passed 29 root unit
   tests, seven Customer integration tests, and seven Auth integration tests; item 5 passed 36 root
@@ -363,11 +363,13 @@ Detailed M0–M2 test/build/runtime evidence and explicitly skipped checks are s
 
 ## Current limitations and next steps
 
-1. M1 and M2 items 1–6 are complete. The next plan-ordered gate is Checkpoint B.
+1. M3 items 1–3 are implemented and exercised. All eight images built; databases, Redis, Auth,
+   Customer, and all stateless services are healthy/running. The existing M2 project occupies
+   ports 3000/8080, so isolated M3 Gateway/Web were verified on 18080/13000.
 2. Keep Customer and Meter Reader denied on Customer data routes until ownership and route-
    assignment scoping is implemented.
-3. Extend gateway routes for reading, billing, payment, and notification; review gateway proxy
-   error handling, forwarded headers, CORS, and rate-limit storage.
+3. Continue with M3 item 4: root dev/test/health scripts, clean-clone Compose startup, and controlled
+   503 validation. Do not disturb the existing project holding ports 3000/8080 without approval.
 4. Build out staff, customer, and reader workflows beyond the current web overview page.
 5. Add the remaining focused service, API/integration, and end-to-end tests as the corresponding
    plan milestones are implemented.
@@ -379,9 +381,21 @@ Detailed M0–M2 test/build/runtime evidence and explicitly skipped checks are s
 
 ## Resume here
 
-Checkpoint A has been passed. M1 items 1–10 and M2 items 1–6 are complete and verified. Checkpoint B
-is next; obtain the user's approval before proceeding beyond it. The Helm chart
-under `infra/helm/aquaflow` was created out of sequence and must remain exploratory until the plan
+Checkpoint A and Checkpoint B have been passed. M1 items 1–10 and M2 items 1–6 are complete and
+verified; M2 is committed at `1e4763f`. M3 items 1–2 are implemented: Gateway route coverage,
+JWT pre-checks, request/correlation IDs, controlled upstream errors/timeouts, CORS, Redis-backed
+rate limiting, and health-checked Compose Redis. All eight images built; isolated databases,
+Redis, Auth, Customer, Reading, Billing, Payment, and Notification are healthy/running. Existing
+M2 services occupy host ports 3000/8080; M3 Gateway and Web were exercised successfully on
+18080/13000, including internal Web-to-Gateway access and an expected protected-route HTTP 401.
+M3 item 4 is underway: root dev/test/health commands are implemented; the health tests pass 3/3
+and live checks to the M3 Gateway/Web on 18080/13000 return HTTP 200. The focused Gateway test also
+confirms an unavailable upstream returns controlled HTTP 503 and a timed-out upstream returns 504.
+Clean-clone Compose startup remains open. A recent Compose interpolation check reported required
+local values as unset when `--env-file .env` was omitted; root scripts explicitly load it, and
+Compose config validation passes when it is supplied.
+Do not stop or change the earlier Compose project without user approval. The Helm chart under
+`infra/helm/aquaflow` was created out of sequence and must remain exploratory until the plan
 reaches M10. Docker is available; the isolated Compose project is running. Helm and kubectl remain
 unavailable.
 
