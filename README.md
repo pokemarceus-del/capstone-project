@@ -26,13 +26,13 @@ The repository includes the core AquaFlow capstone structure and initial service
 7. Helm deployment baseline and non-root container hardening
 
 Auth and Customer data use PostgreSQL; other domain services still use in-memory stores. The
-project is a development/capstone foundation, not a production-ready deployment. M1 and M2 items
-1–6 are complete, and Checkpoint B was approved on 2026-10-07. M3 items 1–2 are implemented:
-Gateway routes, JWT pre-check, request/correlation IDs, controlled errors, CORS, timeouts,
-Redis-backed distributed rate limiting, and Redis health-aware Compose startup. All eight M3 images
-also build; an isolated smoke test passed for Gateway, Redis, four stateless services, and Web.
-Complete M3 item 3 by exercising the full Compose stack once user-managed `.env` settings are
-available. See
+project is a development/capstone foundation, not a production-ready deployment. M1 items 1–10
+and M2 items 1–6 are complete, and Checkpoint B was approved on 2026-10-07. M3 items 1–4 are complete in
+commit `c5af826`: Gateway routes, JWT pre-check, request/correlation IDs, controlled errors, CORS,
+timeouts, Redis-backed distributed rate limiting, and health-aware Compose startup. A clean clone
+passed `npm ci`, all root checks, all eight image builds, and full Compose startup with alternate
+host ports because the existing M2 project retains 3000/8080. Gateway and Web returned HTTP 200.
+See
 the [implementation roadmap](docs/implementation-roadmap.md) for the supplied plan's milestone
 order, current status, acceptance gates, and next work queue; the [project timeline](docs/project-timeline.md)
 and [validation record](docs/validation-record.md) for completed work, test evidence, and known

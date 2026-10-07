@@ -363,13 +363,15 @@ Detailed M0–M2 test/build/runtime evidence and explicitly skipped checks are s
 
 ## Current limitations and next steps
 
-1. M3 items 1–3 are implemented and exercised. All eight images built; databases, Redis, Auth,
-   Customer, and all stateless services are healthy/running. The existing M2 project occupies
-   ports 3000/8080, so isolated M3 Gateway/Web were verified on 18080/13000.
+1. M3 items 1–4 are complete and validated at commit `c5af826`. A clean clone passed `npm ci`,
+   root tests (44 passed; 19 skipped), lint, typechecks, formatting, all eight image builds, and
+   full Compose startup with temporary alternate Gateway/Web ports. The existing M2 project still
+   owns 3000/8080; no existing containers or volumes were changed.
 2. Keep Customer and Meter Reader denied on Customer data routes until ownership and route-
    assignment scoping is implemented.
-3. Continue with M3 item 4: root dev/test/health scripts, clean-clone Compose startup, and controlled
-   503 validation. Do not disturb the existing project holding ports 3000/8080 without approval.
+3. Continue with M4 item 1: add the Reading database, billing periods/windows, routes, and
+   authoritative reader assignments. Do not disturb the existing project holding ports 3000/8080
+   without approval.
 4. Build out staff, customer, and reader workflows beyond the current web overview page.
 5. Add the remaining focused service, API/integration, and end-to-end tests as the corresponding
    plan milestones are implemented.
@@ -388,12 +390,13 @@ rate limiting, and health-checked Compose Redis. All eight images built; isolate
 Redis, Auth, Customer, Reading, Billing, Payment, and Notification are healthy/running. Existing
 M2 services occupy host ports 3000/8080; M3 Gateway and Web were exercised successfully on
 18080/13000, including internal Web-to-Gateway access and an expected protected-route HTTP 401.
-M3 item 4 is underway: root dev/test/health commands are implemented; the health tests pass 3/3
-and live checks to the M3 Gateway/Web on 18080/13000 return HTTP 200. The focused Gateway test also
-confirms an unavailable upstream returns controlled HTTP 503 and a timed-out upstream returns 504.
-Clean-clone Compose startup remains open. A recent Compose interpolation check reported required
-local values as unset when `--env-file .env` was omitted; root scripts explicitly load it, and
-Compose config validation passes when it is supplied.
+M3 items 1–4 are complete and committed at `c5af826`. A clean clone passed `npm ci`, root tests
+(44 passed; 19 skipped), lint, typechecks, formatting, all eight image builds, and full Compose
+startup using temporary alternate ports 18081/13001. The clean-clone Gateway and Web returned HTTP
+200, and Web reached Gateway over Compose DNS. Focused Gateway tests confirm controlled HTTP
+503/504 behavior. The existing M2 services still own 3000/8080; neither the M2 nor the M3
+validation project was changed. Continue in order with M4 item 1: the Reading database, billing
+periods/windows, routes, and authoritative reader assignments.
 Do not stop or change the earlier Compose project without user approval. The Helm chart under
 `infra/helm/aquaflow` was created out of sequence and must remain exploratory until the plan
 reaches M10. Docker is available; the isolated Compose project is running. Helm and kubectl remain

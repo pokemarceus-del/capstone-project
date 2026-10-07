@@ -309,7 +309,7 @@ authorization and audit`); `.env.jwt-keys` and other local secrets were excluded
   controlled dependency-failure acceptance checks for the next plan-ordered M3 item. Do not stop
   the prior project or change its port ownership without user approval.
 
-## 2026-10-07 — M3 item 4: root workflow and health checks (in progress)
+## 2026-10-07 — M3 item 4: root workflow and clean-clone acceptance (complete)
 
 - Added root Compose development commands (`dev`, `dev:ps`, and `dev:down`); the development
   project is isolated as `aquaflow-dev`. The existing root `test` command remains the primary
@@ -321,7 +321,12 @@ authorization and audit`); `.env.jwt-keys` and other local secrets were excluded
 - Verified the Gateway's controlled upstream failure behavior with its focused test: unavailable
   upstream returned HTTP 503/`UPSTREAM_UNAVAILABLE`, and timeout returned
   HTTP 504/`UPSTREAM_TIMEOUT`.
-- Clean-clone startup remains open. Compose interpolation currently reports required local
-  settings as unset when a command omits `--env-file .env`; explicit root script Compose config
-  validation passes. The default dev stack would conflict with the earlier project's host ports;
-  neither project or its volumes were changed. No local `.env` or key contents were recorded.
+- Committed M3 at `c5af826`, cloned that revision to a separate validation directory, and passed
+  `npm.cmd ci`, root tests (44 passed; 19 skipped), lint, workspace typechecks, and formatting.
+- Built all eight images and started the full clean-clone Compose stack with dedicated project
+  volumes. A temporary Compose copy mapped Gateway/Web to 18081/13001 because the earlier M2
+  project owns 8080/3000. PostgreSQL, Auth, Customer, and Redis became healthy; Gateway, Web, and
+  Web-to-Gateway over Compose DNS returned HTTP 200.
+- The existing M2 and M3 validation projects remained running. No existing container or volume
+  was stopped or changed; the temporary clone and its isolated Compose resources were removed
+  after validation. No local `.env` or key contents were recorded.

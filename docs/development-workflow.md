@@ -43,15 +43,11 @@ Customer share the RS256/JWKS verifier; Customer route permissions follow the in
 recorded in `implementation-roadmap.md`. Customer registration uses the Admin-issued, single-use
 invitation decision recorded in `assumptions-and-questions.md`. Durable Auth security audit events
 and the complete role-by-endpoint tests are recorded in `security-authorization-matrix.md`. M3
-items 1–2 now include complete current-service Gateway routes, JWT pre-check, request/correlation
-IDs, controlled errors, CORS, timeouts, Redis-backed distributed rate limiting, and health-aware
-Redis Compose startup. M3 item 3 built all eight images and smoke-tested Gateway, Redis, Reading,
-Billing, Payment, Notification, and Web in an isolated network. The M3 validation Compose project
-has healthy PostgreSQL, Redis, Auth, and Customer, with the stateless services running. M3 Gateway
-and Web were exercised on alternate host ports because the pre-existing M2 project still owns
-3000/8080. M3 item 4 is in progress: root Compose-dev and health scripts are implemented and the
-health script has focused tests; clean-clone acceptance evidence is still pending. The Gateway's
-controlled upstream failure responses have focused test coverage. Root Compose scripts explicitly
-load the local `.env` file; bare Compose commands that omit it fail required-variable
-interpolation. Keep `.env`,
+items 1–4 are complete and committed at `c5af826`: the Gateway routes, JWT pre-check,
+request/correlation IDs, controlled errors, CORS, timeouts, Redis-backed distributed rate limiting,
+and health-aware Redis Compose startup are implemented. A clean clone passed `npm ci`, the root
+test suite (44 passed; 19 database-dependent skips), lint, typechecks, and formatting. All eight
+images built, the isolated full Compose stack started, and Gateway/Web returned HTTP 200. The
+pre-existing M2 project owns 3000/8080, so the clean-clone smoke used temporary alternate ports.
+Keep `.env`,
 `.env.jwt-keys`, and private signing keys out of commits.
