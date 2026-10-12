@@ -156,3 +156,8 @@ workloads:
       limits:
         cpu: '1'
         memory: 768Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  host: aquaflow.local
