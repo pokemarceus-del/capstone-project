@@ -2,8 +2,12 @@
 
 This tracker translates the supplied `AquaFlow_Complete_Development_Plan.docx` into an ordered
 working backlog. The supplied plan is the strict requirements and sequencing authority. Status
-reflects repository evidence as of 2026-10-07, not the presence of a directory or a successful
+reflects repository evidence as of 2026-10-12, not the presence of a directory or a successful
 compile alone.
+
+## Current M10 gate status — 2026-10-12
+
+M10 is in progress. Argo CD is verified Synced/Healthy for the revision currently in GitHub. The local chart defines Gateway and Reading HPAs (1–3 replicas, 70% CPU), PDBs, and RollingUpdate with zero unavailable pods, but these edits have not been pushed or synced. Metrics Server is absent; live scaling, rollout/rollback, safe multi-node node-drain testing, and Checkpoint E are pending. The current kind cluster is single-node and contains stateful services, so do not drain or recreate it without a safe data-preserving plan. Preliminary OpenTelemetry changes are parked and are not accepted M11 evidence. M11 stays held until Checkpoint E passes.
 
 ## Plan compliance and gate policy
 
@@ -15,10 +19,9 @@ compile alone.
   treat it as permission to skip earlier gates.
 - Some M1 edits began before the M0 checkpoint was approved. They are retained; following the
   user's Checkpoint A approval, M1 may now resume from its first required-work item.
-- The Helm/Kubernetes chart was created before M10, contrary to the supplied order (M9 CI/CD comes
-  first, and the plan says not to start Kubernetes before the application works in Compose). It is
-  quarantined as exploratory; do not expand or count it as M10 progress until the preceding gates
-  pass.
+- The Helm/Kubernetes chart was created before M10, but the M9 prerequisite has since passed and M10
+  is now active. Chart work counts as M10 evidence only when applied and verified through the live
+  GitOps-managed cluster; rendered templates alone do not pass the deployment gate.
 - The repository already contained partial later-milestone scaffolds before this plan review.
   These are status-audited below, not evidence that their milestones are complete or permission to
   continue them out of order.
@@ -45,16 +48,15 @@ compile alone.
 | M7        | Events, payments, and notifications  | **Partial**                                               | Mock in-memory payment and notification APIs exist. Missing RabbitMQ/Mailpit, typed event contracts, transactional outbox/inbox, signed/deduplicated webhook flow, durable payment/ledger idempotency, OTC and online checkout, retries/DLQ, and end-to-end evidence.                                                                                                                                                                                                                                                                  |
 | M8        | Customer portal and reader PWA       | **Not started**                                           | No customer bill/usage/payment portal or offline route-capture PWA workflow found.                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | M9        | Quality gates and CI/CD              | **Not started**                                           | Local lint/format/typecheck/test commands were added as M1 foundation work. CI workflows, meaningful broader unit/integration coverage, contract/E2E tests, image scanning, and release process are not present.                                                                                                                                                                                                                                                                                                                       |
-| M10       | Kubernetes and IaC                   | **Premature exploratory work only; do not continue yet**  | A Helm chart exists, but it was created out of sequence before M1–M9 gates passed. Do not expand, deploy, or count it as completed M10 work until the supplied M10 prerequisites are reached. Databases, broker, Redis, MinIO, ingress, migrations, kind automation, HPA/PDB, Argo CD, and cluster verification remain missing. Docker/Helm/kubectl were unavailable in the validation environment.                                                                                                                                    |
-| M11       | Observability and resilience         | **Not started**                                           | No OpenTelemetry, Prometheus/Grafana, centralized logs/traces, SLOs/alerts, or game-day evidence found.                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| M10       | Kubernetes and IaC | **In progress — GitOps synced; operational tests and Checkpoint E remain** | Argo CD Synced/Healthy applies to the revision in GitHub. The local chart defines Gateway/Reading HPAs (1–3 replicas, 70% CPU), PDBs, and RollingUpdate, but is not pushed/applied. Metrics Server is absent; scaling, rollout/rollback, and safe node-drain validation remain. The current kind cluster is single-node and contains stateful services. Do not advance to M11. |
+| M11       | Observability and resilience | **Not started — held behind the M10 gate** | Preliminary local OpenTelemetry changes are out-of-sequence and are not accepted M11 evidence. Metrics/logs/traces collection, SLOs/alerts, and game-day evidence remain unstarted. |
 | M12       | Hardening, performance, and capstone | **Not started**                                           | Security/performance/backup/restore, load targets, final E2E, runbooks, retrospective, and presentation are not evidenced.                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 ## Required execution order
 
 Checkpoint A was passed by the user on 2026-10-06. Continue with M1 from its first required-work
-item. The existing M10 Helm chart is premature and exploratory only. Follow the plan's M0-to-M12
-gates; do not expand Kubernetes/GitOps or mark a later phase complete while earlier requirements
-remain unsatisfied.
+item. M10 remains in progress as summarized above. Complete its live GitOps deployment and
+operational tests, then pass Checkpoint E before advancing to M11.
 
 ### M0 — Orientation and domain discovery — complete; Checkpoint A passed
 

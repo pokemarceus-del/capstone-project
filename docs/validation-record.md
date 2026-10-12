@@ -165,3 +165,14 @@ development/tests use the plugin's in-process store; production refuses to start
 - Checkpoint B was approved on 2026-10-07; M3 items 1–2 are implemented and item 3's full isolated runtime is exercised. The user-managed database password mismatches are fixed. The pre-existing M2 project still occupies the default host ports; use the documented alternate ports or stop that project only with the user's approval. Remaining M3 acceptance evidence is tracked in `implementation-roadmap.md`.
 - Each milestone's remaining acceptance gate is tracked in `implementation-roadmap.md`; do not
   infer completion of later milestones from these earlier checks.
+
+## M10 — HPA/PDB chart preparation and gate status (2026-10-12)
+
+| Validation | Result | Evidence and limitations |
+| --- | --- | --- |
+| Helm chart lint and render | Passed locally | Gateway and Reading render with HPA settings of 1–3 replicas and 70% CPU target, PDBs, and RollingUpdate strategy (maxUnavailable: 0, maxSurge: 1). Not applied to the live cluster. |
+| Compose configuration | Passed locally | Config validation passed with process-scoped dummy JWT values; no containers were started. |
+| Live GitOps deployment | Existing Argo CD status previously verified Synced/Healthy | Status is for the GitHub revision, not these unpushed chart changes. |
+| HPA operation | Not validated | Metrics Server is absent; live CPU metrics and scaling behavior are unverified. |
+| Rollout, rollback, node drain | Not validated | No operational exercises were run. The single-node cluster contains stateful services; safe drain requires a multi-node plan and data protection. |
+| Checkpoint E | Not passed | Operational acceptance and explicit checkpoint review remain outstanding; M11 remains held. |

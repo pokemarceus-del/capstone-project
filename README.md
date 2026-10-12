@@ -39,6 +39,8 @@ and [validation record](docs/validation-record.md) for completed work, test evid
 limitations. The [security and authorization matrix](docs/security-authorization-matrix.md)
 records the current endpoint policy and audited actions.
 
+M10 remains in progress. Argo CD previously reported the AquaFlow application Synced/Healthy, but the local chart updates are not yet in GitHub or applied to the live cluster. The chart defines Gateway and Reading HPAs (1–3 replicas, 70% CPU), PDBs, and RollingUpdate; live metrics, scaling, rollout/rollback, safe node-drain validation, and Checkpoint E remain outstanding. Metrics Server is absent and the current kind cluster is single-node. Preliminary OpenTelemetry work is parked and does not count as M11; M11 remains held until M10 passes.
+
 ## Quick run
 
 From the repo root:

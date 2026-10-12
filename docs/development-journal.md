@@ -1,5 +1,13 @@
 # AquaFlow development journal
 
+## 2026-10-12 — M10 gate reassessment and HPA/PDB preparation
+
+- Re-read the authoritative plan and corrected M10 status to in progress; M11 remains held.
+- Defined Gateway/Reading HPA values at 1–3 replicas and 70% CPU, PDB minimum availability of one, and zero-unavailable RollingUpdate strategies.
+- Local Helm lint/render and Compose config validation passed. The chart is not pushed or synced; no live rollout was performed.
+- Metrics Server is absent and the cluster is single-node with stateful services. Live HPA, rollout/rollback, and safe node-drain validation remain pending; no unsafe drain/recreation was attempted.
+- Preliminary OpenTelemetry changes remain parked and are not accepted M11 evidence. Checkpoint E has not passed.
+
 ## 2026-10-06 — Plan review and domain-discovery foundation
 
 - Reviewed the supplied `AquaFlow_Complete_Development_Plan.docx` and mapped its M0–M12

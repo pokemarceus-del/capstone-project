@@ -8,6 +8,14 @@ Detailed pass/fail evidence for completed gates is in [validation-record.md](./v
 
 ## Timeline
 
+### 2026-10-12 — M10 gate reassessment and chart preparation
+
+- Re-read the plan and corrected the premature M10 completion claim. Argo CD's existing Synced/Healthy status applies to the revision already in GitHub, not the local HPA/PDB changes.
+- Added Gateway and Reading HPA configuration (1–3 replicas, 70% CPU), PDBs, and zero-unavailable RollingUpdate strategy. Helm lint/render checks and Compose configuration validation passed locally.
+- The chart has not been pushed or applied. Metrics Server is absent; live autoscaling, rollout/rollback, node-drain validation, and Checkpoint E are outstanding. The single-node kind cluster contains stateful services, so no drain/recreation was attempted.
+- Preliminary OpenTelemetry changes remain parked and unaccepted as M11 work. No commit or push is included in this record.
+
+
 Detailed M0–M2 test/build/runtime evidence and explicitly skipped checks are summarized in
 [validation-record.md](./validation-record.md).
 

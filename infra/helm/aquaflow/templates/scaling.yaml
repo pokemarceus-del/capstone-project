@@ -1,0 +1,42 @@
+{{- range $name, $workload := .Values.workloads }}
+{{- if (dig "autoscaling" "enabled" false $workload) }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: aquaflow-{{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/part-of: aquaflow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: aquaflow-{{ $name }}
+  minReplicas: {{ dig "autoscaling" "minReplicas" 1 $workload }}
+  maxReplicas: {{ dig "autoscaling" "maxReplicas" 3 $workload }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ dig "autoscaling" "targetCPUUtilizationPercentage" 70 $workload }}
+{{- end }}
+{{- if (dig "disruptionBudget" "enabled" false $workload) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: aquaflow-{{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/part-of: aquaflow
+spec:
+  minAvailable: {{ dig "disruptionBudget" "minAvailable" 1 $workload }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+      app.kubernetes.io/part-of: aquaflow
+{{- end }}
+{{- end }}

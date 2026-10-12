@@ -8,9 +8,14 @@ metadata:
     app.kubernetes.io/name: {{ $name }}
     app.kubernetes.io/part-of: aquaflow
 spec:
+  {{- if not (dig "autoscaling" "enabled" false $workload) }}
   replicas: 1
+  {{- end }}
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ $name }}
