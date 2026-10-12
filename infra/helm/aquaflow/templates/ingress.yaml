@@ -3,6 +3,8 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: aquaflow
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
   labels:
     app.kubernetes.io/name: aquaflow
     app.kubernetes.io/part-of: aquaflow
